@@ -99,6 +99,9 @@ void Phase2ITValidateRecHitBase::bookLayerHistos(DQMStore::IBooker& ibooker, uns
 
     local_histos.pullY_eta =
         phase2tkutil::bookProfile1DFromPSet(config_.getParameter<edm::ParameterSet>("PullY_eta"), ibooker);
+
+    local_histos.pullX_phi =
+        phase2tkutil::bookProfile1DFromPSet(config_.getParameter<edm::ParameterSet>("PullX_phi"), ibooker);
     ibooker.setCurrentFolder(subdir + "/" + key + "/PrimarySimHits");
     //all histos for Primary particles
     local_histos.numberRecHitsprimary =
@@ -166,6 +169,7 @@ void Phase2ITValidateRecHitBase::fillRechitHistos(const PSimHit* simhitClosest,
   layerMEs_[key].deltaYvsdeltaX->Fill(dx, dy);
   layerMEs_[key].pullX_eta->Fill(eta, pullx);
   layerMEs_[key].pullY_eta->Fill(eta, pully);
+  layerMEs_[key].pullX_phi->Fill(phi, pullx);
   if (isPrimary) {
     layerMEs_[key].deltaX_primary->Fill(dx);
     layerMEs_[key].deltaY_primary->Fill(dy);
@@ -339,6 +343,17 @@ void Phase2ITValidateRecHitBase::fillPSetDescription(edm::ParameterSetDescriptio
   psd12.add<double>("xmin", -4.1);
   psd12.add<double>("ymin", -4.0);
   desc.add<edm::ParameterSetDescription>("PullY_eta", psd12);
+
+  edm::ParameterSetDescription psd18;
+  psd18.add<std::string>("name", "Pull_X_vs_Phi");
+  psd18.add<std::string>("title", "Pull_X_vs_Phi;#phi;pull x");
+  psd18.add<double>("ymax", 4.0);
+  psd18.add<int>("NxBins", 36);
+  psd18.add<bool>("switch", true);
+  psd18.add<double>("xmax", M_PI);
+  psd18.add<double>("xmin", -M_PI);
+  psd18.add<double>("ymin", -4.0);
+  desc.add<edm::ParameterSetDescription>("PullX_phi", psd18);
 
   //simhits primary
 

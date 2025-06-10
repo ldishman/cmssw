@@ -75,6 +75,7 @@ protected:
     MonitorElement* deltaYvsdeltaX = nullptr;
     MonitorElement* pullX_eta = nullptr;
     MonitorElement* pullY_eta = nullptr;
+    MonitorElement* pullX_phi = nullptr;
     //For rechits matched to primary simhits
     MonitorElement* numberRecHitsprimary = nullptr;
     MonitorElement* pullX_primary;

@@ -197,7 +197,7 @@ void Phase2ITValidateRecHitBase::fillPSetDescription(edm::ParameterSetDescriptio
 
   edm::ParameterSetDescription psd2;
   psd2.add<std::string>("name", "Pull_X");
-  psd2.add<std::string>("title", "Pull_X;pull x;");
+  psd2.add<std::string>("title", "Pull_Xhelloworld;pull x;");
   psd2.add<double>("xmin", -4.0);
   psd2.add<bool>("switch", true);
   psd2.add<double>("xmax", 4.0);

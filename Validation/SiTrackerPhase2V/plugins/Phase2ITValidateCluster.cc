@@ -62,6 +62,7 @@ private:
   struct ClusterMEs {
     MonitorElement* deltaX_P = nullptr;
     MonitorElement* deltaY_P = nullptr;
+    MonitorElement* deltaZ_P = nullptr;
     MonitorElement* deltaX_P_primary = nullptr;
     MonitorElement* deltaY_P_primary = nullptr;
   };
@@ -216,6 +217,7 @@ void Phase2ITValidateCluster::fillITHistos(const edm::Event& iEvent,
       Local3DPoint localPosSimHit(closestSimHit->localPosition());
       const double deltaX = phase2tkutil::cmtomicron * (localPosCluster.x() - localPosSimHit.x());
       const double deltaY = phase2tkutil::cmtomicron * (localPosCluster.y() - localPosSimHit.y());
+      const double deltaZ = phase2tkutil::cmtomicron * (localPosCluster.z() - localPosSimHit.z());
 
       auto layerMEIt = layerMEs_.find(folderkey);
       if (layerMEIt == layerMEs_.end())
@@ -224,6 +226,7 @@ void Phase2ITValidateCluster::fillITHistos(const edm::Event& iEvent,
       ClusterMEs& local_mes = layerMEIt->second;
       local_mes.deltaX_P->Fill(deltaX);
       local_mes.deltaY_P->Fill(deltaY);
+      local_mes.deltaZ_P->Fill(deltaZ);
       // Primary particles only
       if (phase2tkutil::isPrimary(simTrackIt->second, closestSimHit)) {
         local_mes.deltaX_P_primary->Fill(deltaX);
@@ -275,6 +278,9 @@ void Phase2ITValidateCluster::bookLayerHistos(DQMStore::IBooker& ibooker, uint32
     local_mes.deltaY_P =
         phase2tkutil::book1DFromPSet(config_.getParameter<edm::ParameterSet>("Delta_Y_Pixel"), ibooker);
 
+    local_mes.deltaZ_P = 
+        phase2tkutil::book1DFromPSet(config_.getParameter<edm::ParameterSet>("Delta_Z_Pixel"), ibooker);
+
     // Puting primary digis in a subfolder
     ibooker.setCurrentFolder(subdir + '/' + folderName + "/PrimarySimHits");
 
@@ -323,6 +329,16 @@ void Phase2ITValidateCluster::fillDescriptions(edm::ConfigurationDescriptions& d
     psd0.add<bool>("switch", true);
     psd0.add<int>("NxBins", 100);
     desc.add<edm::ParameterSetDescription>("Delta_Y_Pixel", psd0);
+  }
+  {
+    edm::ParameterSetDescription psd0;
+    psd0.add<std::string>("name", "Delta_Z_Pixel");
+    psd0.add<std::string>("title", "#Delta Z ;Cluster resolution Z coordinate [#mum]");
+    psd0.add<double>("xmin", -250.);
+    psd0.add<double>("xmax", 250.);
+    psd0.add<bool>("switch", true);
+    psd0.add<int>("NxBins", 100);
+    desc.add<edm::ParameterSetDescription>("Delta_Z_Pixel", psd0);
   }
   {
     edm::ParameterSetDescription psd0;

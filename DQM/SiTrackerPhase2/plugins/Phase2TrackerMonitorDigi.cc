@@ -450,7 +450,7 @@ void Phase2TrackerMonitorDigi::bookHistograms(DQMStore::IBooker& ibooker,
   Parameters = config_.getParameter<edm::ParameterSet>("RZPositionMapH");
   if (Parameters.getParameter<bool>("switch"))
     RZPositionMap = ibooker.book2D("DigiRPosVsZPos",
-                                   "DigiRPosVsZPosHELLOWORLD",
+                                   "DigiRPosVsZPos",
                                    Parameters.getParameter<int32_t>("Nxbins"),
                                    Parameters.getParameter<double>("xmin"),
                                    Parameters.getParameter<double>("xmax"),

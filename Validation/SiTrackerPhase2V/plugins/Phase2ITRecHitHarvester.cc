@@ -34,6 +34,7 @@ private:
   const std::string deltaXvsPhiname_;
   const std::string deltaYvsEtaname_;
   const std::string deltaYvsPhiname_;
+  const std::string deltaYvsdeltaXname_;
 };
 
 Phase2ITRecHitHarvester::Phase2ITRecHitHarvester(const edm::ParameterSet& iConfig)
@@ -48,7 +49,8 @@ Phase2ITRecHitHarvester::Phase2ITRecHitHarvester(const edm::ParameterSet& iConfi
       deltaXvsEtaname_(iConfig.getParameter<std::string>("ResidualXvsEta")),
       deltaXvsPhiname_(iConfig.getParameter<std::string>("ResidualXvsPhi")),
       deltaYvsEtaname_(iConfig.getParameter<std::string>("ResidualYvsEta")),
-      deltaYvsPhiname_(iConfig.getParameter<std::string>("ResidualYvsPhi")) {}
+      deltaYvsPhiname_(iConfig.getParameter<std::string>("ResidualYvsPhi")),
+      deltaYvsdeltaXname_(iConfig.getParameter<std::string>("ResidualYvsResidualX")) {}
 
 Phase2ITRecHitHarvester::~Phase2ITRecHitHarvester() {}
 
@@ -82,6 +84,7 @@ void Phase2ITRecHitHarvester::dofitsForLayer(const std::string& iFolder,
   MonitorElement* deltaX_phi = igetter.get(iFolder + "/" + deltaXvsPhiname_);
   MonitorElement* deltaY_eta = igetter.get(iFolder + "/" + deltaYvsEtaname_);
   MonitorElement* deltaY_phi = igetter.get(iFolder + "/" + deltaYvsPhiname_);
+  MonitorElement* deltaY_deltaX = igetter.get(iFolder + "/" + deltaYvsdeltaXname_);
 
   std::string resFolder = iFolder + "/ResolutionFromFit/";
 
@@ -111,6 +114,12 @@ void Phase2ITRecHitHarvester::dofitsForLayer(const std::string& iFolder,
   MonitorElement* meanY_phi =
       phase2tkharvestutil::book1DFromPSet(config_.getParameter<edm::ParameterSet>("meanYvsphi"), ibooker);
   gausFitslices(deltaY_phi, meanY_phi, sigmaY_phi);
+
+  MonitorElement* sigmaY_sigmaX =
+      phase2tkharvestutil::book1DFromPSet(config_.getParameter<edm::ParameterSet>("resYvsresX"), ibooker);
+  MonitorElement* meanY_meanX =
+      phase2tkharvestutil::book1DFromPSet(config_.getParameter<edm::ParameterSet>("meanYvsmeanX"), ibooker);
+  gausFitslices(deltaY_deltaX, meanY_meanX, sigmaY_sigmaX);
 }
 void Phase2ITRecHitHarvester::gausFitslices(MonitorElement* srcME, MonitorElement* meanME, MonitorElement* sigmaME) {
   TH2F* histo = srcME->getTH2F();
@@ -200,6 +209,15 @@ void Phase2ITRecHitHarvester::fillDescriptions(edm::ConfigurationDescriptions& d
   psd3.add<bool>("switch", true);
   desc.add<edm::ParameterSetDescription>("resYvsphi", psd3);
 
+  edm::ParameterSetDescription psd8;
+  psd8.add<std::string>("name", "resolutionYFitvsresolutionXFit");
+  psd8.add<std::string>("title", ";#delta x; Y-Resolution from fit [#mum]");
+  psd8.add<int>("NxBins", 36);
+  psd8.add<double>("xmax", 100);
+  psd8.add<double>("xmin", -100);
+  psd8.add<bool>("switch", true);
+  desc.add<edm::ParameterSetDescription>("resYvsresX", psd8);
+
   edm::ParameterSetDescription psd4;
   psd4.add<std::string>("name", "meanXFitvseta");
   psd4.add<std::string>("title", ";|#eta|; Mean residual X from fit [#mum]");
@@ -235,6 +253,15 @@ void Phase2ITRecHitHarvester::fillDescriptions(edm::ConfigurationDescriptions& d
   psd7.add<double>("xmin", -M_PI);
   psd7.add<bool>("switch", true);
   desc.add<edm::ParameterSetDescription>("meanYvsphi", psd7);
+
+  edm::ParameterSetDescription psd9;
+  psd9.add<std::string>("name", "meanYFitvsmeanXFit");
+  psd9.add<std::string>("title", ";#delta x; Mean residual Y from fit [#mum]");
+  psd9.add<int>("NxBins", 36);
+  psd9.add<double>("xmax", 100);
+  psd9.add<double>("xmin", -100);
+  psd9.add<bool>("switch", true);
+  desc.add<edm::ParameterSetDescription>("meanYvsmeanX", psd9);
 
   desc.add<unsigned int>("NFitThreshold", 100);
 

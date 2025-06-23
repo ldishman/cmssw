@@ -376,7 +376,7 @@ void Phase2TrackerValidateDigi::bookHistograms(DQMStore::IBooker& ibooker,
   std::stringstream HistoName;
 
   HistoName.str("");
-  HistoName << "NumberOfSimulatedTracksHELLOWORLD";
+  HistoName << "NumberOfSimulatedTracks";
   nSimulatedTracks = ibooker.book1D(HistoName.str(), HistoName.str(), 501, -0.5, 500.5);
 
   HistoName.str("");
@@ -870,7 +870,7 @@ void Phase2TrackerValidateDigi::bookLayerHistos(DQMStore::IBooker& ibooker, unsi
       local_mes.SimHitDz = nullptr;
 
     HistoName.str("");
-    HistoName << "BunchXingWindowHELLOWORLD";
+    HistoName << "BunchXingWindow";
     local_mes.BunchXTimeBin = ibooker.book1D(HistoName.str(), HistoName.str(), 8, -5.5, 2.5);
 
     HistoName.str("");

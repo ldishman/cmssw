@@ -3,7 +3,7 @@ from Validation.SiTrackerPhase2V.Phase2TrackerValidateDigi_cff import *
 from Validation.SiTrackerPhase2V.Phase2ITValidateRecHit_cff import *
 from Validation.SiTrackerPhase2V.Phase2ITValidateTrackingRecHit_cff import *
 from Validation.SiTrackerPhase2V.Phase2ITValidateCluster_cff import *
-from Validation.SiTrackerPhase2V.Phase2ITValidateELinkDataRate import *
+from Validation.SiTrackerPhase2V.Phase2ITValidateDataRate_cff import *
 from Validation.SiTrackerPhase2V.Phase2OTValidateCluster_cff import *
 from Validation.SiTrackerPhase2V.Phase2OTValidateTrackingRecHit_cff import *
 from Validation.SiTrackerPhase2V.Phase2ValidateL1TTObjects_cff import *
@@ -13,7 +13,7 @@ trackerphase2ValidationSource = cms.Sequence(pixDigiValid
                                              + rechitValidIT
                                              + trackingRechitValidIT
                                              + clusterValidIT
-                                             + ELinkValidIT
+                                             + dataRateValidIT
                                              + clusterValidOT
                                              + trackingRechitValidOT
                                              + trackingParticleValidOT

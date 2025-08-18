@@ -1,3 +1,0 @@
-import FWCore.ParameterSet.Config as cms
-from Validation.SiTrackerPhase2V.Phase2ITValidateELinkDataRate_cfi.py import Phase2ITValidateELinkDataRate
-ELinkValidIT = Phase2ITValidateELinkDataRate.clone()

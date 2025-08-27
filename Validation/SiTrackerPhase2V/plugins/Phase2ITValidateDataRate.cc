@@ -73,7 +73,7 @@ void Phase2ITValidateDataRate::dqmBeginRun(const edm::Run& iRun, const edm::Even
 	tTopo_ = &iSetup.getData(topoToken_);
 
 	cablingMap_ = &iSetup.getData(cablingMapToken_);
-	//knownDTCIdsWithIndex_ = cablingMap_->getKnownDTCIdsWithIndex();
+	knownDTCIdsWithIndex_ = cablingMap_->getKnownDTCIdsWithIndex();
 }
 
 void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {

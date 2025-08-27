@@ -28,6 +28,7 @@
 
 class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 	public:
+		// Declare explicit constructor, destructor, member functions (or overrides) 
 		explicit Phase2ITValidateDataRate(const edm::ParameterSet&);
 		~Phase2ITValidateDataRate() override;
 		void dqmBeginRun(const edm::Run& iRun, const edm::EventSetup& iSetup) override;
@@ -41,11 +42,13 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 			// MonitorElement* myHistoVar2 = nullptr;
 		};
 
+		// Declare other plugin member functions/variables
 		void bookLayerHistos(DQMStore::IBooker& ibooker, uint32_t det_it, const std::string& subdir);
 		std::map<std::string, DataRateMEs> layerMEs_;
 		std::vector<std::pair<unsigned int, unsigned int>> knownDTCIdsWithIndex_;
-		//std::unordered_map<unsigned int, std::vector<uint32_t>> dtcIdToDetIds_;
+		std::unordered_map<unsigned int, std::vector<uint32_t>> dtcIdToDetIds_;
 
+		// Declare other needed configs/inputs/tokens/pointers
 		edm::ParameterSet config_;
 		const edm::ESGetToken<TrackerDetToDTCELinkCablingMap, TrackerDetToDTCELinkCablingMapRcd> cablingMapToken_;
 		const edm::EDGetTokenT<edm::DetSetVector<Phase2ITChipBitStream>> ITChipBitStreamToken_;
@@ -72,13 +75,20 @@ void Phase2ITValidateDataRate::dqmBeginRun(const edm::Run& iRun, const edm::Even
 	tkGeom_ = &iSetup.getData(geomToken_);
 	tTopo_ = &iSetup.getData(topoToken_);
 
-	cablingMap_ = &iSetup.getData(cablingMapToken_);
+	cablingMap_ = &iSetup.getData(cablingMapToken_);	// cablingMap from event setup
 	knownDTCIdsWithIndex_ = cablingMap_->getKnownDTCIdsWithIndex();
+	dtcIdToDetIds_.clear();
+
+	for (const auto& pair : knownDTCIdsWithIndex_) {
+		unsigned int dtcId = pair.second;
+		dtcIdToDetIds_[dtcId] = cablingMap_->getAllDetIdsForDTCId(dtcId);
+	}
+	// Something else may need to go here as well, not sure yet
 }
 
 void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
-	edm::Handle<edm::DetSetVector<Phase2ITChipBitStream>> handle;
-	iEvent.getByToken(ITChipBitStreamToken_, handle);
+	edm::Handle<edm::DetSetVector<Phase2ITChipBitStream>> handle;	// handle ~= data
+	iEvent.getByToken(ITChipBitStreamToken_, handle);	// retrieve bitstream data (this does nothing for now)
 
 	if (!handle.isValid()) {
 		edm::LogWarning("Phase2ITValidateDataRate") << "No Phase2ITChipBitStream collection found!";

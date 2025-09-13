@@ -14,3 +14,7 @@ __init__.py
 /*
 !/*/
 EventFilter/Phase2PixelRawToDigi/test/*.root
+
+# ignore output files
+#DQM/SiTrackerPhase2/test/step3_pre4_inDQM.root
+#DQM/SiTrackerPhase2/test/DQM_V0001_R000000001__Global__CMSSW_X_Y_Z__RECO.root

@@ -121,7 +121,7 @@ void Phase2ITValidateDataRate::fillDescriptions(edm::ConfigurationDescriptions& 
 		psd0.add<int>("NxBins", 200);
 		desc.add<edm::ParameterSetDescription>("bitstreamSize", psd0);
 	// May need some other desc.add statements here, not sure
-	desc.add<edm::InputTag>("Phase2ITChipBitStream", edm::InputTag("PixelQCoreProducer"));
+	desc.add<edm::InputTag>("Phase2ITChipBitStream", edm::InputTag("Phase2ITQCoreProducer"));
 	desc.add<std::string>("TopFolderName", "TrackerPhase2ITDataRateV");
 	descriptions.add("Phase2ITValidateDataRate", desc);
 }

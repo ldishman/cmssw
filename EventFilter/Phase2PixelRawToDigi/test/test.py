@@ -60,6 +60,9 @@ process.configurationMetadata = cms.untracked.PSet(
 process.load("Validation.RecoVertex.mcverticesanalyzer_cfi")
 process.mcverticesanalyzer.pileupSummaryCollection = cms.InputTag("addPileupInfo","","HLT")
 
+# Validate Data Rate analyzer
+process.load("Validation.SiTrackerPhase2V.Phase2ITValidateDataRate_cff")
+
 process.Phase2ITQCoreProducer = cms.EDProducer(
     'Phase2ITQCoreProducer',
     src = cms.InputTag("generalTracks"),
@@ -100,7 +103,8 @@ process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:phase2_realistic_T30', ''
 # Path and EndPath definitions
 process.digitisation_step = cms.Path(process.pdigi_valid)
 process.user_step = cms.Path(
-    process.Phase2ITQCoreProducer
+    process.Phase2ITQCoreProducer *
+    process.dataRateValidIT
 #    process.Packer *
 #    process.Unpacker
 )

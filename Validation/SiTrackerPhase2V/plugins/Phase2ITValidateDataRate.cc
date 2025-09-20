@@ -41,7 +41,6 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 			MonitorElement* bitstreamSize = nullptr;
 			// MonitorElement* myHistoVar2 = nullptr;
 		};
-		//MonitorElement* bitstreamSize_ = nullptr;
 
 		// Declare other plugin member functions/variables
 		void bookLayerHistos(DQMStore::IBooker& ibooker, uint32_t det_it, const std::string& subdir);
@@ -84,23 +83,16 @@ void Phase2ITValidateDataRate::dqmBeginRun(const edm::Run& iRun, const edm::Even
 		unsigned int dtcId = pair.second;
 		dtcIdToDetIds_[dtcId] = cablingMap_->getAllDetIdsForDTCId(dtcId);
 	}
-	// Something else may need to go here as well, not sure yet
 }
 
 void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
 	edm::Handle<edm::DetSetVector<Phase2ITChipBitStream>> handle;	// handle ~= data
-	iEvent.getByToken(ITChipBitStreamToken_, handle);	// retrieve bitstream data (this does nothing for now)
+	iEvent.getByToken(ITChipBitStreamToken_, handle);	// retrieve bitstream data
 
 	//for (const auto& detset : *handle) {
 	//	for (const auto& chip : detset) {
 	//		bitstreamSize_->Fill(bitstreamSize);
 	//	}
-	//}
-
-	//if (!handle.isValid()) {
-	//	edm::LogWarning("Phase2ITValidateDataRate") << "No Phase2ITChipBitStream collection found!";
-		// The above line should be printed for now, given input file mismatch (solve later)
-	//	return;
 	//}
 }
 
@@ -108,7 +100,9 @@ void Phase2ITValidateDataRate::bookHistograms(DQMStore::IBooker& ibooker, edm::R
 	std::string top_folder = config_.getParameter<std::string>("TopFolderName");
 	edm::LogInfo("Phase2ITValidateDataRate") << " Booking Histograms in: " << top_folder;
 
-	ibooker.setCurrentFolder("TrackerPhase2ITDataRateV");
+	ibooker.setCurrentFolder("top_folder");
+	//ibooker.setCurrentFolder("TrackerPhase2ITDataRateV");
+	
 	//bitstreamSize_ = ibooker.book1D("bitstreamSize", "Bitstream size;Size [bits];Entries", 200, 0., 1000.);
 	//for (auto const& det_u : tkGeom_->detUnits()) {
 	//	if (!(det_u->subDetector() == GeomDetEnumerators::SubDetector::P2PXB ||
@@ -121,8 +115,6 @@ void Phase2ITValidateDataRate::bookHistograms(DQMStore::IBooker& ibooker, edm::R
 
 void Phase2ITValidateDataRate::bookLayerHistos(DQMStore::IBooker& ibooker, uint32_t det_id, const std::string& subdir) {
 	std::string folderName = phase2tkutil::getITHistoId(det_id, tTopo_);
-
-	//edm::LogVerbatim("Phase2ITValidateDataRate") << "DetId = " << det_id << " -> histo_id = \"" << folderName << "\"";
 
 	if (folderName.empty()) {
 		edm::LogWarning("Phase2ITValidateDataRate") << ">>>> Invalid histo_id ";
@@ -146,9 +138,9 @@ void Phase2ITValidateDataRate::fillDescriptions(edm::ConfigurationDescriptions& 
 		psd0.add<std::string>("name", "bitstreamSize");
 		psd0.add<std::string>("title", "Bitstream Size per Chip;Bitstream Size [bits];Number of Chips");
 		psd0.add<bool>("switch", true);     // What is this? cmsRun yelled at me without it
-		psd0.add<double>("xmax", 1000.);     // Arbitrary nums right now
+		psd0.add<double>("xmax", 20000.);
 		psd0.add<double>("xmin", 0.);
-		psd0.add<int>("NxBins", 200);
+		psd0.add<int>("NxBins", 2000);
 		desc.add<edm::ParameterSetDescription>("bitstreamSize", psd0);
 	// May need some other desc.add statements here, not sure
 	desc.add<edm::InputTag>("Phase2ITChipBitStream", edm::InputTag("Phase2ITQCoreProducer"));

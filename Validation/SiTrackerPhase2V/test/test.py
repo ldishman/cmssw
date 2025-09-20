@@ -31,32 +31,32 @@ process.source = cms.Source("PoolSource",
 # Configuration metadata
 process.configurationMetadata = cms.untracked.PSet(
     version = cms.untracked.string('$Revision: 1.0 $'),
-    annotation = cms.untracked.string('Phase2IT BitStream DQM'),
-    name = cms.untracked.string('Phase2ITBitStreamDQM')
+    annotation = cms.untracked.string('Phase2IT DataRate DQM'),
+    name = cms.untracked.string('Phase2ITDataRateDQM')
 )
 
-process.Phase2ITValidateBitStream = DQMEDAnalyzer("Phase2ITValidateBitStream",
+process.Phase2ITValidateDataRate = DQMEDAnalyzer("Phase2ITValidateDataRate",
     # Input collection
-    Phase2ITChipBitStream = cms.InputTag("Phase2ITQCoreProducer"),
+    #Phase2ITChipDataRate = cms.InputTag("Phase2ITQCoreProducer"),
     
     # DQM folder name
-    TopFolderName = cms.string("TrackerPhase2ITBitStreamV"),
+    TopFolderName = cms.string("TrackerPhase2ITDataRateV"),
     
     # Histogram configuration
-    bitStreamSize = cms.PSet(
-        name = cms.string("bitStreamSize"),
-        title = cms.string("Bitstream Size per Chip;Bitstream Size [bits];Number of Chips"),
-        xMax = cms.double(20000.0),
-        xMin = cms.double(0.0),
-        nBins = cms.int32(2000)
-    )
+    #bitStreamSize = cms.PSet(
+    #    name = cms.string("bitStreamSize"),
+    #    title = cms.string("Bitstream Size per Chip;Bitstream Size [bits];Number of Chips"),
+    #    xMax = cms.double(20000.0),
+    #    xMin = cms.double(0.0),
+    #    nBins = cms.int32(2000)
+    #)
 )
 
 process.load('DQMServices.Components.DQMEventInfo_cfi')
-process.dqmEnv.subSystemFolder = cms.untracked.string('Ph2TkBitStream')
+process.dqmEnv.subSystemFolder = cms.untracked.string('Ph2TkDataRate')
 
 # DQM sequences
-process.bitstream_seq = cms.Sequence(process.Phase2ITValidateBitStream)
+process.bitstream_seq = cms.Sequence(process.Phase2ITValidateDataRate)
 process.dqm_comm = cms.Sequence(process.dqmEnv)
 
 # Output definition - DQM output

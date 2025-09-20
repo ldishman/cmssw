@@ -41,6 +41,7 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 			MonitorElement* bitstreamSize = nullptr;
 			// MonitorElement* myHistoVar2 = nullptr;
 		};
+		//MonitorElement* bitstreamSize_ = nullptr;
 
 		// Declare other plugin member functions/variables
 		void bookLayerHistos(DQMStore::IBooker& ibooker, uint32_t det_it, const std::string& subdir);
@@ -90,24 +91,53 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 	edm::Handle<edm::DetSetVector<Phase2ITChipBitStream>> handle;	// handle ~= data
 	iEvent.getByToken(ITChipBitStreamToken_, handle);	// retrieve bitstream data (this does nothing for now)
 
-	if (!handle.isValid()) {
-		edm::LogWarning("Phase2ITValidateDataRate") << "No Phase2ITChipBitStream collection found!";
+	//for (const auto& detset : *handle) {
+	//	for (const auto& chip : detset) {
+	//		bitstreamSize_->Fill(bitstreamSize);
+	//	}
+	//}
+
+	//if (!handle.isValid()) {
+	//	edm::LogWarning("Phase2ITValidateDataRate") << "No Phase2ITChipBitStream collection found!";
 		// The above line should be printed for now, given input file mismatch (solve later)
-		return;
-	}
+	//	return;
+	//}
 }
 
 void Phase2ITValidateDataRate::bookHistograms(DQMStore::IBooker& ibooker, edm::Run const& iRun, edm::EventSetup const& iSetup) {
 	std::string top_folder = config_.getParameter<std::string>("TopFolderName");
 	edm::LogInfo("Phase2ITValidateDataRate") << " Booking Histograms in: " << top_folder;
+
+	ibooker.setCurrentFolder("TrackerPhase2ITDataRateV");
+	//bitstreamSize_ = ibooker.book1D("bitstreamSize", "Bitstream size;Size [bits];Entries", 200, 0., 1000.);
+	//for (auto const& det_u : tkGeom_->detUnits()) {
+	//	if (!(det_u->subDetector() == GeomDetEnumerators::SubDetector::P2PXB ||
+	//		det_u->subDetector() == GeomDetEnumerators::SubDetector::P2PXEC))
+	//		continue; // continue if not Pixel
+	//	uint32_t detId_raw = det_u->geographicalId().rawId();
+	//	bookLayerHistos(ibooker, detId_raw, top_folder);
+	//}
 }
 
 void Phase2ITValidateDataRate::bookLayerHistos(DQMStore::IBooker& ibooker, uint32_t det_id, const std::string& subdir) {
 	std::string folderName = phase2tkutil::getITHistoId(det_id, tTopo_);
+
+	//edm::LogVerbatim("Phase2ITValidateDataRate") << "DetId = " << det_id << " -> histo_id = \"" << folderName << "\"";
+
 	if (folderName.empty()) {
 		edm::LogWarning("Phase2ITValidateDataRate") << ">>>> Invalid histo_id ";
 		return;
 	}
+
+	//if (layerMEs_.find(folderName) == layerMEs_.end()) {
+	//	ibooker.cd();
+	//	ibooker.setCurrentFolder(subdir + '/' + folderName);
+	//	edm::LogInfo("Phase2ITValidateDataRate") << " Booking Histograms in: " << subdir + '/' + folderName;
+
+	//	DataRateMEs local_mes;
+	//	local_mes.bitstreamSize = phase2tkutil::book1DFromPSet(config_.getParameter<edm::ParameterSet>("bitstreamSize"), ibooker);
+	//	layerMEs_.emplace(folderName, local_mes);
+	//}
 }
 
 void Phase2ITValidateDataRate::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
@@ -115,7 +145,7 @@ void Phase2ITValidateDataRate::fillDescriptions(edm::ConfigurationDescriptions& 
 		edm::ParameterSetDescription psd0;
 		psd0.add<std::string>("name", "bitstreamSize");
 		psd0.add<std::string>("title", "Bitstream Size per Chip;Bitstream Size [bits];Number of Chips");
-		//psd0.add<bool>("switch", true);     // What is this?
+		psd0.add<bool>("switch", true);     // What is this? cmsRun yelled at me without it
 		psd0.add<double>("xmax", 1000.);     // Arbitrary nums right now
 		psd0.add<double>("xmin", 0.);
 		psd0.add<int>("NxBins", 200);

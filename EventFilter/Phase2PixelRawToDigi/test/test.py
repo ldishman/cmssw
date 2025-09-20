@@ -22,6 +22,7 @@ process.load('Configuration.StandardSequences.L1Reco_cff')
 process.load('Configuration.StandardSequences.Reconstruction_cff')
 process.load('Configuration.StandardSequences.EndOfProcess_cff')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
+#process.load('DQMServices.Core.DQMStoreNonLegacy_cff')
 
 process.maxEvents = cms.untracked.PSet(
     input = cms.untracked.int32(1)
@@ -61,7 +62,7 @@ process.load("Validation.RecoVertex.mcverticesanalyzer_cfi")
 process.mcverticesanalyzer.pileupSummaryCollection = cms.InputTag("addPileupInfo","","HLT")
 
 # Validate Data Rate analyzer
-process.load("Validation.SiTrackerPhase2V.Phase2ITValidateDataRate_cff")
+#process.load("Validation.SiTrackerPhase2V.Phase2ITValidateDataRate_cff")
 
 process.Phase2ITQCoreProducer = cms.EDProducer(
     'Phase2ITQCoreProducer',
@@ -92,6 +93,13 @@ process.FEVTDEBUGoutput = cms.OutputModule("PoolOutputModule",
         'keep *_Phase2IT*_*_*',  # Save Phase2ITChipBitStream
     )
 )
+
+# DQM output definition
+#process.DQMoutput = cms.OutputModule("DQMRootOutputModule",
+#    fileName = cms.untracked.string("dqm_histos.root"),
+#    #outputCommands = process.DQMEventContent.outputCommands
+#)
+
 # Other statements
 process.mix.digitizers = cms.PSet(process.theDigitizersValid)
 # This pset is specific for producing simulated events for the designers of the PROC (InnerTracker)
@@ -103,16 +111,18 @@ process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:phase2_realistic_T30', ''
 # Path and EndPath definitions
 process.digitisation_step = cms.Path(process.pdigi_valid)
 process.user_step = cms.Path(
-    process.Phase2ITQCoreProducer *
-    process.dataRateValidIT
+    process.Phase2ITQCoreProducer
+    #process.dataRateValidIT *
 #    process.Packer *
 #    process.Unpacker
 )
 process.endjob_step = cms.EndPath(process.endOfProcess)
 process.output_step = cms.EndPath(process.FEVTDEBUGoutput)
+#process.DQMoutput_step = cms.EndPath(process.DQMoutput)
 
 # Schedule definition
 process.schedule = cms.Schedule(process.user_step,process.endjob_step,process.output_step)
+#,process.DQMoutput_step)
 
 # Have logErrorHarvester wait for the same EDProducers to finish as those providing data for the OutputModule
 from FWCore.Modules.logErrorHarvester_cff import customiseLogErrorHarvesterUsingOutputCommands
@@ -121,5 +131,5 @@ process = customiseLogErrorHarvesterUsingOutputCommands(process)
 from Configuration.StandardSequences.earlyDeleteSettings_cff import customiseEarlyDelete
 process = customiseEarlyDelete(process)
 
-
-
+#print(process.user_step.dumpPython())
+#print(process.DQMoutput_step.dumpPython())

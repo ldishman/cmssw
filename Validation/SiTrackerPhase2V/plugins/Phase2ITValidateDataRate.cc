@@ -7,6 +7,7 @@
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/ParameterSet/interface/ConfigurationDescriptions.h"
 #include "FWCore/ParameterSet/interface/ParameterSetDescription.h"
+#include "FWCore/ServiceRegistry/interface/Service.h"
 
 #include "DQMServices/Core/interface/DQMEDAnalyzer.h"
 #include "DQMServices/Core/interface/DQMStore.h"
@@ -25,6 +26,8 @@
 #include "Geometry/Records/interface/TrackerDigiGeometryRecord.h"
 
 #include "DQM/SiTrackerPhase2/interface/TrackerPhase2DQMUtil.h"
+#include "CommonTools/UtilAlgos/interface/TFileService.h" 
+#include "TH1F.h"
 
 class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 	public:
@@ -41,6 +44,9 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 			MonitorElement* bitstreamSize = nullptr;
 			// MonitorElement* myHistoVar2 = nullptr;
 		};
+
+		// Test histogram pointer
+		TH1F* thist_bitStreamSize = nullptr;
 
 		// Declare other plugin member functions/variables
 		void bookLayerHistos(DQMStore::IBooker& ibooker, uint32_t det_it, const std::string& subdir);
@@ -60,12 +66,16 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 };
 
 Phase2ITValidateDataRate::Phase2ITValidateDataRate(const edm::ParameterSet& iConfig)
-    : config_(iConfig), cablingMapToken_(
-          esConsumes<TrackerDetToDTCELinkCablingMap, TrackerDetToDTCELinkCablingMapRcd, edm::Transition::BeginRun>()),
-      ITChipBitStreamToken_(consumes<edm::DetSetVector<Phase2ITChipBitStream>>(
-          iConfig.getParameter<edm::InputTag>("Phase2ITChipBitStream"))), geomToken_(esConsumes<TrackerGeometry, TrackerDigiGeometryRecord, edm::Transition::BeginRun>()), topoToken_(esConsumes<TrackerTopology, TrackerTopologyRcd, edm::Transition::BeginRun>()) {
-	    edm::LogInfo("Phase2ITValidateDataRate") << ">>> Construct Phase2ITValidateDataRate ";
-}
+    : config_(iConfig), 
+      cablingMapToken_(esConsumes<TrackerDetToDTCELinkCablingMap, TrackerDetToDTCELinkCablingMapRcd, edm::Transition::BeginRun>()),
+      ITChipBitStreamToken_(consumes<edm::DetSetVector<Phase2ITChipBitStream>>(iConfig.getParameter<edm::InputTag>("Phase2ITChipBitStream"))),      geomToken_(esConsumes<TrackerGeometry, TrackerDigiGeometryRecord, edm::Transition::BeginRun>()), 
+      topoToken_(esConsumes<TrackerTopology, TrackerTopologyRcd, edm::Transition::BeginRun>()) 
+      {
+            edm::LogInfo("Phase2ITValidateDataRate") << ">>> Construct Phase2ITValidateDataRate ";
+            // Test histogram object
+            edm::Service<TFileService> fs;
+            thist_bitStreamSize = fs->make<TH1F>("bitStreamSize_direct", "", 2000, 0., 20000.);
+      }
 
 Phase2ITValidateDataRate::~Phase2ITValidateDataRate() {
 	edm::LogInfo("Phase2ITValidateDataRate") << ">>> Destroy Phase2ITValidateDataRate ";
@@ -89,6 +99,13 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 	edm::Handle<edm::DetSetVector<Phase2ITChipBitStream>> handle;	// handle ~= data
 	iEvent.getByToken(ITChipBitStreamToken_, handle);	// retrieve bitstream data
 
+	for (const auto& detset : *handle) {
+		for (const auto& bitStream : detset) {
+			size_t bitStreamSize= bitStream.get_bitstream().size();
+			thist_bitStreamSize->Fill(bitStreamSize);
+		}
+	}
+
 	//for (const auto& detset : *handle) {
 	//	for (const auto& chip : detset) {
 	//		bitstreamSize_->Fill(bitstreamSize);
@@ -100,7 +117,7 @@ void Phase2ITValidateDataRate::bookHistograms(DQMStore::IBooker& ibooker, edm::R
 	std::string top_folder = config_.getParameter<std::string>("TopFolderName");
 	edm::LogInfo("Phase2ITValidateDataRate") << " Booking Histograms in: " << top_folder;
 
-	ibooker.setCurrentFolder("top_folder");
+	ibooker.setCurrentFolder(top_folder);
 	//ibooker.setCurrentFolder("TrackerPhase2ITDataRateV");
 	
 	//bitstreamSize_ = ibooker.book1D("bitstreamSize", "Bitstream size;Size [bits];Entries", 200, 0., 1000.);

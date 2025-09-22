@@ -65,7 +65,7 @@ process.DQMoutput = cms.OutputModule("DQMRootOutputModule",
 )
 
 process.TFileService = cms.Service("TFileService",
-    fileName = cms.string("tfile_output.root")
+    fileName = cms.string("/eos/user/l/ldishman/DQMtests/tfile_output.root")
 )
 
 # Path and EndPath definitions

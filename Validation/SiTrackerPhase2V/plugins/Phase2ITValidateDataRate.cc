@@ -45,8 +45,9 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 			// MonitorElement* myHistoVar2 = nullptr;
 		};
 
-		// Test histogram pointer
+		// Test histogram pointers
 		TH1F* thist_bitStreamSize = nullptr;
+		TH1F* thist_bitStreamSizeModule = nullptr;
 
 		// Declare other plugin member functions/variables
 		void bookLayerHistos(DQMStore::IBooker& ibooker, uint32_t det_it, const std::string& subdir);
@@ -66,16 +67,18 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 };
 
 Phase2ITValidateDataRate::Phase2ITValidateDataRate(const edm::ParameterSet& iConfig)
-    : config_(iConfig), 
-      cablingMapToken_(esConsumes<TrackerDetToDTCELinkCablingMap, TrackerDetToDTCELinkCablingMapRcd, edm::Transition::BeginRun>()),
-      ITChipBitStreamToken_(consumes<edm::DetSetVector<Phase2ITChipBitStream>>(iConfig.getParameter<edm::InputTag>("Phase2ITChipBitStream"))),      geomToken_(esConsumes<TrackerGeometry, TrackerDigiGeometryRecord, edm::Transition::BeginRun>()), 
-      topoToken_(esConsumes<TrackerTopology, TrackerTopologyRcd, edm::Transition::BeginRun>()) 
-      {
-            edm::LogInfo("Phase2ITValidateDataRate") << ">>> Construct Phase2ITValidateDataRate ";
-            // Test histogram object
-            edm::Service<TFileService> fs;
-            thist_bitStreamSize = fs->make<TH1F>("bitStreamSize_direct", "", 2000, 0., 20000.);
-      }
+	: config_(iConfig), 
+      	cablingMapToken_(esConsumes<TrackerDetToDTCELinkCablingMap, TrackerDetToDTCELinkCablingMapRcd, edm::Transition::BeginRun>()),
+      	ITChipBitStreamToken_(consumes<edm::DetSetVector<Phase2ITChipBitStream>>(iConfig.getParameter<edm::InputTag>("Phase2ITChipBitStream"))),
+      	geomToken_(esConsumes<TrackerGeometry, TrackerDigiGeometryRecord, edm::Transition::BeginRun>()), 
+      	topoToken_(esConsumes<TrackerTopology, TrackerTopologyRcd, edm::Transition::BeginRun>()) 
+      	{
+      		edm::LogInfo("Phase2ITValidateDataRate") << ">>> Construct Phase2ITValidateDataRate ";
+      	      	// Test histogram objects
+      	      	edm::Service<TFileService> fs;
+      	      	thist_bitStreamSize = fs->make<TH1F>("bitStreamSize_direct", "", 2000, 0., 20000.);
+      	      	thist_bitStreamSizeModule = fs->make<TH1F>("bitStreamSizeModule_direct", "", 1000, 0., 10000.);
+      	}
 
 Phase2ITValidateDataRate::~Phase2ITValidateDataRate() {
 	edm::LogInfo("Phase2ITValidateDataRate") << ">>> Destroy Phase2ITValidateDataRate ";
@@ -100,10 +103,13 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 	iEvent.getByToken(ITChipBitStreamToken_, handle);	// retrieve bitstream data
 
 	for (const auto& detset : *handle) {
+		size_t bitStreamSizeModule = 0.;
 		for (const auto& bitStream : detset) {
-			size_t bitStreamSize= bitStream.get_bitstream().size();
+			size_t bitStreamSize = bitStream.get_bitstream().size();
 			thist_bitStreamSize->Fill(bitStreamSize);
+			bitStreamSizeModule += bitStreamSize;
 		}
+		thist_bitStreamSizeModule->Fill(bitStreamSizeModule);
 	}
 
 	//for (const auto& detset : *handle) {

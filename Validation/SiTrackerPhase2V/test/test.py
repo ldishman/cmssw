@@ -37,7 +37,7 @@ process.configurationMetadata = cms.untracked.PSet(
 
 process.Phase2ITValidateDataRate = DQMEDAnalyzer("Phase2ITValidateDataRate",
     # Input collection
-    #Phase2ITChipDataRate = cms.InputTag("Phase2ITQCoreProducer"),
+    Phase2ITChipBitStream = cms.InputTag("Phase2ITQCoreProducer"),
     
     # DQM folder name
     TopFolderName = cms.string("TrackerPhase2ITDataRateV"),

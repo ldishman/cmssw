@@ -1,4 +1,6 @@
 #include <memory>
+#include <string>
+#include <vector>
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/EventSetup.h"
@@ -57,6 +59,8 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 		std::unordered_map<unsigned int, std::vector<uint32_t>> dtcIdToDetIds_;
 		std::unordered_map<unsigned int, unsigned int> detIdToDtcId_;
 		std::map<unsigned int, size_t> bitStreamSizesbyDTC;
+		std::vector<TH1F*> thist_bitStreamSizePerDTC_;
+		std::unordered_map<unsigned int, size_t> dtcIdToIndex_;
 
 		// Declare other needed configs/inputs/tokens/pointers
 		edm::ParameterSet config_;
@@ -81,8 +85,15 @@ Phase2ITValidateDataRate::Phase2ITValidateDataRate(const edm::ParameterSet& iCon
       	      	edm::Service<TFileService> fs;
       	      	thist_bitStreamSize = fs->make<TH1F>("bitStreamSize_direct", "", 2000, 0., 20000.);
       	      	thist_bitStreamSizeModule = fs->make<TH1F>("bitStreamSizeModule_direct", "", 2000, 0., 20000.);
-		thist_bitStreamSizeDTC = fs->make<TH1F>("thist_bitStreamSizeDTC_direct", "", 100, 0., 1000.);
-      	}
+                thist_bitStreamSizeDTC = fs->make<TH1F>("thist_bitStreamSizeDTC_direct", "", 100, 0., 800000.);
+		
+                int dtcIds[36] = {11,12,13,14,15,16,17,18,19,21,22,23,24,25,26,27,28,29,31,32,33,34,35,36,37,38,39,41,42,43,44,45,46,47,48,49};
+                thist_bitStreamSizePerDTC_.resize(36, nullptr);
+                for (int i = 0; i < 36; i++) {
+                        thist_bitStreamSizePerDTC_[i] = fs->make<TH1F>(("thist_bitStreamSizePerDTC_" + std::to_string(dtcIds[i])).c_str(), "", 500, 0., 8000.);
+                        dtcIdToIndex_[dtcIds[i]] = i;
+                }
+        }
 
 Phase2ITValidateDataRate::~Phase2ITValidateDataRate() {
 	edm::LogInfo("Phase2ITValidateDataRate") << ">>> Destroy Phase2ITValidateDataRate ";
@@ -106,7 +117,7 @@ void Phase2ITValidateDataRate::dqmBeginRun(const edm::Run& iRun, const edm::Even
 	for (const auto& [dtcId, detIds] : dtcIdToDetIds_) {
 		for (auto det_id : detIds) {
 			detIdToDtcId_[det_id] = dtcId;
-			//std::cout << "det_id: " << det_id << "gives detIdToDtcId_[det_id]: " << detIdToDtcId_[det_id] << " \n";
+			//std::cout << "det_id: " << det_id << " gives detIdToDtcId_[det_id]: " << detIdToDtcId_[det_id] << " \n";
 		}
 	}
 
@@ -154,25 +165,30 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 	//	
 	//}
 
+	int nModules = 0;
+
 	for (const auto& detset : *handle) {
 		size_t bitStreamSizeModule = 0.;
 		unsigned int det_id = detset.id;
 
 		if (detIdToDtcId_.find(det_id) == detIdToDtcId_.end()) continue;
 
-		auto dtcLinkPair = cablingMap_->detIdToDTCELinkId(det_id);
-		auto it = dtcLinkPair.first;
+		//auto dtcLinkPair = cablingMap_->detIdToDTCELinkId(det_id);
+		//auto it = dtcLinkPair.first;
 		//if (it == dtcLinkPair.second) continue;  // double-check empty range
-		unsigned int dtcId = it->first;
+		//unsigned int dtcId = it->first;
 
-		//unsigned int dtcId = detIdToDtcId_.at(det_id);
+		unsigned int dtcId = detIdToDtcId_.at(det_id);
+		size_t idx = dtcIdToIndex_.at(dtcId);
 		//unsigned int dtcId = cablingMap_->detIdToDTCELinkId(det_id).first;
 		//std::cout << "dtcId: " << dtcId << " \n";
 		//std::cout << "det_id: " << det_id << " \n";
+		nModules += 1;
 		
 		for (const auto& bitStream : detset) {
 			size_t bitStreamSize = bitStream.get_bitstream().size();
 			thist_bitStreamSize->Fill(bitStreamSize);
+			thist_bitStreamSizePerDTC_[idx]->Fill(bitStreamSize);
 			bitStreamSizeModule += bitStreamSize;
 		}
 
@@ -180,6 +196,8 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 		bitStreamSizesbyDTC[dtcId] += bitStreamSizeModule;
 
 	}
+
+	std::cout << "nModules: " << nModules << " \n";
 
 	for (const auto& [dtcId, totalBitStream] : bitStreamSizesbyDTC) {
 		std::cout << "DtcId: " << dtcId << " and totalBitStream: " << totalBitStream << " \n";

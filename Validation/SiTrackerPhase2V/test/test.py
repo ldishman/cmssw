@@ -28,6 +28,19 @@ process.source = cms.Source("PoolSource",
     )
 )
 
+# Specify correct Cabling Map file
+process.load("CondCore.CondDB.CondDB_cfi")
+process.CondDB.connect = 'sqlite_file:OTandITDTCCablingMap.db'
+process.PoolDBESSource = cms.ESSource("PoolDBESSource",
+    process.CondDB,
+    DumpStat = cms.untracked.bool(True),
+    toGet = cms.VPSet(cms.PSet(
+        record = cms.string('TrackerDetToDTCELinkCablingMapRcd'),
+        tag = cms.string("DTCCablingMapProducerUserRun")
+    ))
+)
+process.es_prefer_local_cabling = cms.ESPrefer("PoolDBESSource", "")
+
 # Configuration metadata
 process.configurationMetadata = cms.untracked.PSet(
     version = cms.untracked.string('$Revision: 1.0 $'),

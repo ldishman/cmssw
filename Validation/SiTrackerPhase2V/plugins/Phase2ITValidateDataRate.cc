@@ -42,12 +42,7 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 		static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
 	private:
-		struct DataRateMEs {
-			MonitorElement* bitstreamSize = nullptr;
-			// MonitorElement* myHistoVar2 = nullptr;
-		};
-
-		// Test histogram pointers
+		// Declare histogram pointers
 		TH1F* thist_bitStreamSize = nullptr;
 		TH1F* thist_bitStreamSizeModule = nullptr;
 		TH1F* thist_bitStreamSizeDTC = nullptr;
@@ -81,15 +76,28 @@ Phase2ITValidateDataRate::Phase2ITValidateDataRate(const edm::ParameterSet& iCon
       	topoToken_(esConsumes<TrackerTopology, TrackerTopologyRcd, edm::Transition::BeginRun>()) 
       	{
       		edm::LogInfo("Phase2ITValidateDataRate") << ">>> Construct Phase2ITValidateDataRate ";
-      	      	// Test histogram objects
+      	      	
+		// Create histogram objects
       	      	edm::Service<TFileService> fs;
       	      	thist_bitStreamSize = fs->make<TH1F>("bitStreamSize_direct", "", 2000, 0., 20000.);
       	      	thist_bitStreamSizeModule = fs->make<TH1F>("bitStreamSizeModule_direct", "", 2000, 0., 20000.);
                 thist_bitStreamSizeDTC = fs->make<TH1F>("thist_bitStreamSizeDTC_direct", "", 100, 0., 800000.);
 		
-                int dtcIds[36] = {11,12,13,14,15,16,17,18,19,21,22,23,24,25,26,27,28,29,31,32,33,34,35,36,37,38,39,41,42,43,44,45,46,47,48,49};
-                thist_bitStreamSizePerDTC_.resize(36, nullptr);
-                for (int i = 0; i < 36; i++) {
+		int num_dtcs = 36;
+		int dtcIds[num_dtcs];
+		int index = 0;
+
+                // Create array for all valid DTC Ids (11-19, 21-29, 31-39, 41-49)
+		for (int i = 0; i <= 3; i ++) {
+			int start = 11 + i*10;
+			for (int j = start; j < start + 9; j++) {
+				dtcIds[index++] = j;
+			}
+		}
+
+		// Create TH1F for each DTC
+                thist_bitStreamSizePerDTC_.resize(num_dtcs, nullptr);
+                for (int i = 0; i < num_dtcs; i++) {
                         thist_bitStreamSizePerDTC_[i] = fs->make<TH1F>(("thist_bitStreamSizePerDTC_" + std::to_string(dtcIds[i])).c_str(), "", 500, 0., 8000.);
                         dtcIdToIndex_[dtcIds[i]] = i;
                 }
@@ -106,6 +114,7 @@ void Phase2ITValidateDataRate::dqmBeginRun(const edm::Run& iRun, const edm::Even
 	cablingMap_ = &iSetup.getData(cablingMapToken_);	// cablingMap from event setup
 	knownDTCIdsWithIndex_ = cablingMap_->getKnownDTCIdsWithIndex();
 
+	// Build dtcIdToDetIds map
 	dtcIdToDetIds_.clear();
 	for (const auto& pair : knownDTCIdsWithIndex_) {
 		unsigned int dtcId = pair.second;
@@ -113,6 +122,7 @@ void Phase2ITValidateDataRate::dqmBeginRun(const edm::Run& iRun, const edm::Even
 		//std::cout << "dtcId: " << dtcId << " \n";
 	}
 
+	// Build detIdToDtcId map (by manually undoing dtcIdToDetIds map)
 	detIdToDtcId_.clear();
 	for (const auto& [dtcId, detIds] : dtcIdToDetIds_) {
 		for (auto det_id : detIds) {
@@ -127,66 +137,27 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 	edm::Handle<edm::DetSetVector<Phase2ITChipBitStream>> handle;	// handle ~= data
 	iEvent.getByToken(ITChipBitStreamToken_, handle);	// retrieve bitstream data
 
-	//for (const auto& pair : knownDTCIdsWithIndex_) {
-	//	unsigned int dtcIndex = pair.first;
-	//	unsigned int dtcId = pair.second;
-	//	auto& det_ids = dtcIdToDetIds_[dtcId];
-
-	//	if (dtcIndex == 0) {
-	//		std::cout << "knownDTCIdsWithIndex_ size is: " << knownDTCIdsWithIndex_.size() << "\n";
-	//		std::cout << "dtcIdToDetIds_ size is: " << dtcIdToDetIds_.size() << "\n";
-	//		std::cout << "det_ids size is: " << det_ids.size() << "\n";
-	//	}
-
-	//	size_t bitStreamSizeDTC = 0.;
-
-	//	for (const auto& det_id: det_ids) {
-	//		auto found_det_id = handle->find(det_id);
-	//		const edm::DetSet<Phase2ITChipBitStream>& detSet = *found_det_id;
-
-	//		//if (found_det_id == handle->end()) {
-	//		//	throw cms::Exception("BitstreamToRawProducer") << "Could not find detId from the inputs";
-	//		//}
-	//		
-	//		size_t bitStreamSizeModule = 0.;
-
-	//		if (found_det_id != handle->end()) {
-	//			for(const auto& chip: detSet) {
-	//				std::vector<bool> chipBitstream = chip.get_bitstream();
-	//				unsigned int bitStreamSize = chipBitstream.size();
-	//				bitStreamSizeModule += bitStreamSize;
-	//			}
-	//		}
-
-	//		bitStreamSizeDTC += bitStreamSizeModule;
-	//	}
-	//	
-	//	thist_bitStreamSizeDTC->Fill(bitStreamSizeDTC);
-	//	
-	//}
-
+	// Define module counter for sanity check
 	int nModules = 0;
 
+	// Loop over modules in handle
 	for (const auto& detset : *handle) {
 		size_t bitStreamSizeModule = 0.;
 		unsigned int det_id = detset.id;
+		//std::cout << "det_id = " << det_id << "\n";
 
+		// Check that the handle's det_id exists as a detId in the detIdToDtcId_ map
 		if (detIdToDtcId_.find(det_id) == detIdToDtcId_.end()) continue;
-
-		//auto dtcLinkPair = cablingMap_->detIdToDTCELinkId(det_id);
-		//auto it = dtcLinkPair.first;
-		//if (it == dtcLinkPair.second) continue;  // double-check empty range
-		//unsigned int dtcId = it->first;
 
 		unsigned int dtcId = detIdToDtcId_.at(det_id);
 		size_t idx = dtcIdToIndex_.at(dtcId);
-		//unsigned int dtcId = cablingMap_->detIdToDTCELinkId(det_id).first;
 		//std::cout << "dtcId: " << dtcId << " \n";
 		//std::cout << "det_id: " << det_id << " \n";
 		nModules += 1;
 		
+		// Loop over chips in current module, get bitStreamSize variable, and fill TH1Fs as needed
 		for (const auto& bitStream : detset) {
-			size_t bitStreamSize = bitStream.get_bitstream().size();
+			size_t bitStreamSize = bitStream.get_bitstream().size();	// This bitStreamSize is the only variable used to Fill
 			thist_bitStreamSize->Fill(bitStreamSize);
 			thist_bitStreamSizePerDTC_[idx]->Fill(bitStreamSize);
 			bitStreamSizeModule += bitStreamSize;
@@ -197,37 +168,26 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 
 	}
 
+	// Check module counter
 	std::cout << "nModules: " << nModules << " \n";
 
+	// Fill TH1F for bitStreamSize across all DTCs
 	for (const auto& [dtcId, totalBitStream] : bitStreamSizesbyDTC) {
 		std::cout << "DtcId: " << dtcId << " and totalBitStream: " << totalBitStream << " \n";
 		thist_bitStreamSizeDTC->Fill(totalBitStream);
 	}
 
-	//for (const auto& detset : *handle) {
-	//	for (const auto& chip : detset) {
-	//		bitstreamSize_->Fill(bitstreamSize);
-	//	}
-	//}
 }
 
+// Function unused for now
 void Phase2ITValidateDataRate::bookHistograms(DQMStore::IBooker& ibooker, edm::Run const& iRun, edm::EventSetup const& iSetup) {
 	std::string top_folder = config_.getParameter<std::string>("TopFolderName");
 	edm::LogInfo("Phase2ITValidateDataRate") << " Booking Histograms in: " << top_folder;
 
 	ibooker.setCurrentFolder(top_folder);
-	//ibooker.setCurrentFolder("TrackerPhase2ITDataRateV");
-	
-	//bitstreamSize_ = ibooker.book1D("bitstreamSize", "Bitstream size;Size [bits];Entries", 200, 0., 1000.);
-	//for (auto const& det_u : tkGeom_->detUnits()) {
-	//	if (!(det_u->subDetector() == GeomDetEnumerators::SubDetector::P2PXB ||
-	//		det_u->subDetector() == GeomDetEnumerators::SubDetector::P2PXEC))
-	//		continue; // continue if not Pixel
-	//	uint32_t detId_raw = det_u->geographicalId().rawId();
-	//	bookLayerHistos(ibooker, detId_raw, top_folder);
-	//}
 }
 
+// Function unused for now
 void Phase2ITValidateDataRate::bookLayerHistos(DQMStore::IBooker& ibooker, uint32_t det_id, const std::string& subdir) {
 	std::string folderName = phase2tkutil::getITHistoId(det_id, tTopo_);
 
@@ -235,16 +195,6 @@ void Phase2ITValidateDataRate::bookLayerHistos(DQMStore::IBooker& ibooker, uint3
 		edm::LogWarning("Phase2ITValidateDataRate") << ">>>> Invalid histo_id ";
 		return;
 	}
-
-	//if (layerMEs_.find(folderName) == layerMEs_.end()) {
-	//	ibooker.cd();
-	//	ibooker.setCurrentFolder(subdir + '/' + folderName);
-	//	edm::LogInfo("Phase2ITValidateDataRate") << " Booking Histograms in: " << subdir + '/' + folderName;
-
-	//	DataRateMEs local_mes;
-	//	local_mes.bitstreamSize = phase2tkutil::book1DFromPSet(config_.getParameter<edm::ParameterSet>("bitstreamSize"), ibooker);
-	//	layerMEs_.emplace(folderName, local_mes);
-	//}
 }
 
 void Phase2ITValidateDataRate::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
@@ -257,7 +207,6 @@ void Phase2ITValidateDataRate::fillDescriptions(edm::ConfigurationDescriptions& 
 		psd0.add<double>("xmin", 0.);
 		psd0.add<int>("NxBins", 2000);
 		desc.add<edm::ParameterSetDescription>("bitstreamSize", psd0);
-	// May need some other desc.add statements here, not sure
 	desc.add<edm::InputTag>("Phase2ITChipBitStream", edm::InputTag("Phase2ITQCoreProducer"));
 	desc.add<std::string>("TopFolderName", "TrackerPhase2ITDataRateV");
 	descriptions.add("Phase2ITValidateDataRate", desc);

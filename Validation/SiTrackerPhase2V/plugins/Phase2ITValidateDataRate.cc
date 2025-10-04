@@ -49,7 +49,6 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 
 		// Declare other plugin member functions/variables
 		void bookLayerHistos(DQMStore::IBooker& ibooker, uint32_t det_it, const std::string& subdir);
-		std::map<std::string, DataRateMEs> layerMEs_;
 		std::vector<std::pair<unsigned int, unsigned int>> knownDTCIdsWithIndex_;
 		std::unordered_map<unsigned int, std::vector<uint32_t>> dtcIdToDetIds_;
 		std::unordered_map<unsigned int, unsigned int> detIdToDtcId_;
@@ -114,7 +113,7 @@ void Phase2ITValidateDataRate::dqmBeginRun(const edm::Run& iRun, const edm::Even
 	cablingMap_ = &iSetup.getData(cablingMapToken_);	// cablingMap from event setup
 	knownDTCIdsWithIndex_ = cablingMap_->getKnownDTCIdsWithIndex();
 
-	// Build dtcIdToDetIds map
+	// Build dtcIdToDetIds map (directly from cabling map)
 	dtcIdToDetIds_.clear();
 	for (const auto& pair : knownDTCIdsWithIndex_) {
 		unsigned int dtcId = pair.second;
@@ -137,7 +136,7 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 	edm::Handle<edm::DetSetVector<Phase2ITChipBitStream>> handle;	// handle ~= data
 	iEvent.getByToken(ITChipBitStreamToken_, handle);	// retrieve bitstream data
 
-	// Define module counter for sanity check
+	// Define (successfully matched) module counter for sanity check
 	int nModules = 0;
 
 	// Loop over modules in handle
@@ -147,7 +146,10 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 		//std::cout << "det_id = " << det_id << "\n";
 
 		// Check that the handle's det_id exists as a detId in the detIdToDtcId_ map
-		if (detIdToDtcId_.find(det_id) == detIdToDtcId_.end()) continue;
+		if (detIdToDtcId_.find(det_id) == detIdToDtcId_.end()) {
+			std::cout << "Missing DetId: " << det_id << "\n";
+			continue;
+		}
 
 		unsigned int dtcId = detIdToDtcId_.at(det_id);
 		size_t idx = dtcIdToIndex_.at(dtcId);
@@ -168,7 +170,7 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 
 	}
 
-	// Check module counter
+	// Check (successfully matched) module counter
 	std::cout << "nModules: " << nModules << " \n";
 
 	// Fill TH1F for bitStreamSize across all DTCs

@@ -39,11 +39,17 @@ public:
             std::unordered_multimap<uint32_t, DTCELinkId>::const_iterator>
   detIdToDTCELinkId(uint32_t const) const;
 
+  /// Resolves the layer number associated with the detector identified by the given raw DetId
+  unsigned int detIdToLayerNum(uint32_t const key) const;
+
   /// Returns true if the cabling map has a record corresponding to a detector identified by the given raw DetId
   bool knowsDTCELinkId(DTCELinkId const&) const;
 
   /// Returns true if the cabling map has a record corresponding to an eLink identified by the given DTCELinkId
   bool knowsDetId(uint32_t) const;
+
+  /// Returns true if the cabling map has a record corresponding to a layer number identified by the given layerNum
+  bool knowsLayerNum(unsigned int key) const;
 
   /// Return all DetIds associated with a given DTCId
   std::vector<uint32_t> getAllDetIdsForDTCId(unsigned int dtcId) const;
@@ -64,7 +70,7 @@ public:
   std::vector<uint32_t> getKnownDetIds() const;
 
   /// Inserts in the cabling map a record corresponding to the connection of an eLink identified by the given DTCELinkId to a detector identified by the given raw DetId
-  void insert(DTCELinkId const&, uint32_t const);
+  void insert(DTCELinkId const&, uint32_t const, unsigned int const);
 
   /// Clears the map
   void clear();
@@ -72,6 +78,7 @@ public:
 private:
   std::unordered_multimap<uint32_t, DTCELinkId> cablingMapDetIdToDTCELinkId_;
   std::unordered_map<DTCELinkId, uint32_t> cablingMapDTCELinkIdToDetId_;
+  std::unordered_map<uint32_t, unsigned int> cablingMapDetIdToLayerNum_;
 
   COND_SERIALIZABLE;
 };

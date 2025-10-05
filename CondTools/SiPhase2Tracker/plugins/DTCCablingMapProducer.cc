@@ -91,6 +91,7 @@ private:
   unsigned csvFormat_idtcid_;
   unsigned csvFormat_igbtlinkid_;
   unsigned csvFormat_ielinkid_;
+  unsigned csvFormat_ilayer_;
   cond::Time_t iovBeginTime_;
   std::unique_ptr<TrackerDetToDTCELinkCablingMap> pCablingMap_;
   std::string record_;
@@ -106,6 +107,7 @@ void DTCCablingMapProducer::fillDescriptions(edm::ConfigurationDescriptions& des
   desc.add<unsigned>("csvFormat_idtcid", 0);
   desc.add<unsigned>("csvFormat_igbtlinkid", 0);
   desc.add<unsigned>("csvFormat_ielinkid", 0);
+  desc.add<unsigned>("csvFormat_ilayer", 0);
   desc.add<long long unsigned int>("iovBeginTime", 1);
   desc.add<std::string>("record", "TrackerDTCCablingMapRcd");
   desc.add<std::vector<std::string>>("modulesToDTCCablingCSVFileNames", std::vector<std::string>());
@@ -119,6 +121,7 @@ DTCCablingMapProducer::DTCCablingMapProducer(const edm::ParameterSet& iConfig)
       csvFormat_idtcid_(iConfig.getParameter<unsigned>("csvFormat_idtcid")),
       csvFormat_igbtlinkid_(iConfig.getParameter<unsigned>("csvFormat_igbtlinkid")),
       csvFormat_ielinkid_(iConfig.getParameter<unsigned>("csvFormat_ielinkid")),
+      csvFormat_ilayer_(iConfig.getParameter<unsigned>("csvFormat_ilayer")),
       iovBeginTime_(iConfig.getParameter<long long unsigned int>("iovBeginTime")),
       pCablingMap_(std::make_unique<TrackerDetToDTCELinkCablingMap>()),
       record_(iConfig.getParameter<std::string>("record")) {
@@ -212,6 +215,8 @@ void DTCCablingMapProducer::LoadModulesToDTCCablingMapFromCSV(
             case DUMMY_FILL_DISABLED:
               gbt_id = strtoul(csvColumn.at(csvFormat_igbtlinkid_).c_str(), nullptr, 10);
               elink_id = strtoul(csvColumn.at(csvFormat_ielinkid_).c_str(), nullptr, 10);
+              //elink_id = lineNumber;
+	      //std::cout << "lineNumber = " << lineNumber << "\n";
               break;
             case DUMMY_FILL_ELINK_ID:
               gbt_id = strtoul(csvColumn.at(csvFormat_igbtlinkid_).c_str(), nullptr, 10);

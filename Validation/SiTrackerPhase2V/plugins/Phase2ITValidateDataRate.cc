@@ -52,14 +52,14 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 		std::vector<std::pair<unsigned int, unsigned int>> knownDTCIdsWithIndex_;
 		std::unordered_map<unsigned int, std::vector<uint32_t>> dtcIdToDetIds_;
 		std::unordered_map<uint32_t, unsigned int> detIdToDtcId_;
-		//std::unordered_map<uint32_t, unsigned int> detIdToLayerNum_;
+		std::unordered_map<uint32_t, unsigned int> detIdToLayerNum_;
 		std::map<unsigned int, size_t> bitStreamSizesbyDTC;
 		std::unordered_map<unsigned int, unsigned int> dtcIdToIndex_;
-		//std::unordered_map<unsigned int, unsigned int> layerNumToIndex_;
+		std::unordered_map<unsigned int, unsigned int> layerNumToIndex_;
 		
 		// Declare TH1F object vectors
 		std::vector<TH1F*> thist_bitStreamSizePerDTC_;
-		//std::vector<TH1F*> thist_bitStreamSizePerLayer_;
+		std::vector<TH1F*> thist_bitStreamSizePerLayer_;
 
 		// Declare other needed configs/inputs/tokens/pointers
 		edm::ParameterSet config_;
@@ -81,7 +81,7 @@ Phase2ITValidateDataRate::Phase2ITValidateDataRate(const edm::ParameterSet& iCon
       	{
       		edm::LogInfo("Phase2ITValidateDataRate") << ">>> Construct Phase2ITValidateDataRate ";
       	      	
-		// Create histogram objects
+		// Create simple histogram objects
       	      	edm::Service<TFileService> fs;
       	      	thist_bitStreamSize = fs->make<TH1F>("bitStreamSize_direct", "", 2000, 0., 20000.);
       	      	thist_bitStreamSizeModule = fs->make<TH1F>("bitStreamSizeModule_direct", "", 2000, 0., 20000.);
@@ -108,19 +108,19 @@ Phase2ITValidateDataRate::Phase2ITValidateDataRate(const edm::ParameterSet& iCon
                 }
 
 		// Write setup for Layer Histos
-		//int num_layers = 8;
-		//int layerNums[num_layers];
-		//
-		//for (int i = 0; i <= num_layers-1; i++) {
-		//	layerNums[i] = i+1;
-		//}
+		int num_layers = 8;
+		int layerNums[num_layers];
+		
+		for (int i = 0; i <= num_layers-1; i++) {
+			layerNums[i] = i+1;
+		}
 
 		// Create TH1F for each Layer
-		//thist_bitStreamSizePerLayer_.resize(num_layers, nullptr);
-		//for (int i = 0; i < num_layers; i++) {
-		//	thist_bitStreamSizePerLayer_[i] = fs->make<TH1F>(("thist_bitStreamSizePerLayer_" + std::to_string(layerNums[i])).c_str(), "", 500, 0., 10000.);
-		//	layerNumtoIndex_[layerNums[i]] = i;
-		//}
+		thist_bitStreamSizePerLayer_.resize(num_layers, nullptr);
+		for (int i = 0; i < num_layers; i++) {
+			thist_bitStreamSizePerLayer_[i] = fs->make<TH1F>(("thist_bitStreamSizePerLayer_" + std::to_string(layerNums[i])).c_str(), "", 500, 0., 10000.);
+			layerNumToIndex_[layerNums[i]] = i;
+		}
 
         }
 
@@ -154,10 +154,11 @@ void Phase2ITValidateDataRate::dqmBeginRun(const edm::Run& iRun, const edm::Even
 	}
 
 	// Build detIdToLayerNum map (using detIdToDtcId map for detIds, but getting layerNums from cabling map)
-	//detIdToLayerNum_.clear();
-	//for (const auto& [detId, dtcId] : detIdToDtcId_) {
-	//	detIdToLayerNum_[detId] = cablingMap_->detIdToLayerNum(detId);
-	//}
+	detIdToLayerNum_.clear();
+	for (const auto& [detId, dtcId] : detIdToDtcId_) {
+		detIdToLayerNum_[detId] = cablingMap_->detIdToLayerNum(detId);
+		//std::cout << "cabling map detIdToLayerNum_[detId] = " << detIdToLayerNum_[detId] << " for detId " << detId << "\n";
+	}
 
 }
 
@@ -181,9 +182,9 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 		}
 
 		unsigned int dtcId = detIdToDtcId_.at(det_id);
-		//unsigned int layerNum = detIdToLayerNum_.at(det_id);
+		unsigned int layerNum = detIdToLayerNum_.at(det_id);
 		unsigned int idx = dtcIdToIndex_.at(dtcId);
-		//unsigned int layerIdx = layerNumToIndex_.at(layerNum);
+		unsigned int layerIdx = layerNumToIndex_.at(layerNum);
 		//std::cout << "dtcId: " << dtcId << " \n";
 		//std::cout << "layerNum: " << layerNum << " \n";
 		//std::cout << "det_id: " << det_id << " \n";
@@ -194,7 +195,7 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 			size_t bitStreamSize = bitStream.get_bitstream().size();	// This bitStreamSize is the only variable used to Fill
 			thist_bitStreamSize->Fill(bitStreamSize);
 			thist_bitStreamSizePerDTC_[idx]->Fill(bitStreamSize);
-			//thist_bitStreamSizePerLayer_[layerIdx]->Fill(bitStreamSize);
+			thist_bitStreamSizePerLayer_[layerIdx]->Fill(bitStreamSize);
 			bitStreamSizeModule += bitStreamSize;
 		}
 

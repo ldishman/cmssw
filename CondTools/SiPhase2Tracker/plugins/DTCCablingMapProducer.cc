@@ -250,7 +250,8 @@ void DTCCablingMapProducer::LoadModulesToDTCCablingMapFromCSV(
                 << dtc_id << "," << gbt_id << "," << elink_id << ")";
           }
 
-          pCablingMap_->insert(dtcELinkId, detIdRaw, 0);
+          //unsigned const layerNum = strtoul(csvColumn.at(csvFormat_ilayer_).c_str(), nullptr, 10);
+          pCablingMap_->insert(dtcELinkId, detIdRaw, 0);	// layerNum
         } else {
           if (verbosity_ >= 3) {
             edm::LogInfo("CSVParser") << "Reading CSV file: Skipped a short line: \"" << csvLine << "\"" << endl;

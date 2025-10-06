@@ -143,7 +143,7 @@ std::vector<std::pair<unsigned int, unsigned int>> TrackerDetToDTCELinkCablingMa
 void TrackerDetToDTCELinkCablingMap::insert(DTCELinkId const& dtcELinkId, uint32_t const detId, unsigned int const layerNum) {
   cablingMapDTCELinkIdToDetId_.insert(std::make_pair(DTCELinkId(dtcELinkId), uint32_t(detId)));
   cablingMapDetIdToDTCELinkId_.insert(std::make_pair(uint32_t(detId), DTCELinkId(dtcELinkId)));
-  cablingMapDetIdToLayerNum_.insert(std::make_pair(uint32_t(detId), layerNum));		// No need to recast these anyway
+  cablingMapDetIdToLayerNum_.insert(std::make_pair(detId, layerNum));		// No need to recast these anyway
 }
 
 void TrackerDetToDTCELinkCablingMap::clear() {

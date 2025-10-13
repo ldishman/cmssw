@@ -50,6 +50,19 @@ unsigned int TrackerDetToDTCELinkCablingMap::detIdToLayerNum(uint32_t const key)
   return it->second;
 }
 
+unsigned int TrackerDetToDTCELinkCablingMap::detIdToRingNum(uint32_t const key) const {
+  auto const it = cablingMapDetIdToRingNum_.find(key);
+  
+  if (it == cablingMapDetIdToRingNum_.end()) {
+    throw cms::Exception(
+        "TrackerDetToDTCELinkCablingMap has been asked to return a ringNum associated to a DetId, but the latter is "
+        "unknown to the map. ")
+        << " DetId = " << key << std::endl;
+  }
+
+  return it->second;
+}
+
 bool TrackerDetToDTCELinkCablingMap::knowsDTCELinkId(DTCELinkId const& key) const {
   return cablingMapDTCELinkIdToDetId_.find(key) != cablingMapDTCELinkIdToDetId_.end();
 }
@@ -60,6 +73,10 @@ bool TrackerDetToDTCELinkCablingMap::knowsDetId(uint32_t key) const {
 
 bool TrackerDetToDTCELinkCablingMap::knowsLayerNum(unsigned int key) const {
   return cablingMapDetIdToLayerNum_.find(key) != cablingMapDetIdToLayerNum_.end();
+}
+
+bool TrackerDetToDTCELinkCablingMap::knowsRingNum(unsigned int key) const {
+  return cablingMapDetIdToRingNum_.find(key) != cablingMapDetIdToRingNum_.end();
 }
 
 std::vector<DTCELinkId> TrackerDetToDTCELinkCablingMap::getKnownDTCELinkIds() const {
@@ -140,14 +157,16 @@ std::vector<std::pair<unsigned int, unsigned int>> TrackerDetToDTCELinkCablingMa
   return dtcIdsWithIndex;
 }
 
-void TrackerDetToDTCELinkCablingMap::insert(DTCELinkId const& dtcELinkId, uint32_t const detId, unsigned int const layerNum) {
+void TrackerDetToDTCELinkCablingMap::insert(DTCELinkId const& dtcELinkId, uint32_t const detId, unsigned int const layerNum, unsigned int const ringNum) {
   cablingMapDTCELinkIdToDetId_.insert(std::make_pair(DTCELinkId(dtcELinkId), uint32_t(detId)));
   cablingMapDetIdToDTCELinkId_.insert(std::make_pair(uint32_t(detId), DTCELinkId(dtcELinkId)));
   cablingMapDetIdToLayerNum_.insert(std::make_pair(detId, layerNum));		// No need to recast these anyway
+  cablingMapDetIdToRingNum_.insert(std::make_pair(detId, ringNum));
 }
 
 void TrackerDetToDTCELinkCablingMap::clear() {
   cablingMapDTCELinkIdToDetId_.clear();
   cablingMapDetIdToDTCELinkId_.clear();
   cablingMapDetIdToLayerNum_.clear();
+  cablingMapDetIdToRingNum_.clear();
 }

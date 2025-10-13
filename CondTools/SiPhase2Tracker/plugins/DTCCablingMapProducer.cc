@@ -92,6 +92,7 @@ private:
   unsigned csvFormat_igbtlinkid_;
   unsigned csvFormat_ielinkid_;
   unsigned csvFormat_ilayer_;
+  unsigned csvFormat_iring_;
   cond::Time_t iovBeginTime_;
   std::unique_ptr<TrackerDetToDTCELinkCablingMap> pCablingMap_;
   std::string record_;
@@ -108,6 +109,7 @@ void DTCCablingMapProducer::fillDescriptions(edm::ConfigurationDescriptions& des
   desc.add<unsigned>("csvFormat_igbtlinkid", 0);
   desc.add<unsigned>("csvFormat_ielinkid", 0);
   desc.add<unsigned>("csvFormat_ilayer", 0);
+  desc.add<unsigned>("csvFormat_iring", 0);
   desc.add<long long unsigned int>("iovBeginTime", 1);
   desc.add<std::string>("record", "TrackerDTCCablingMapRcd");
   desc.add<std::vector<std::string>>("modulesToDTCCablingCSVFileNames", std::vector<std::string>());
@@ -122,6 +124,7 @@ DTCCablingMapProducer::DTCCablingMapProducer(const edm::ParameterSet& iConfig)
       csvFormat_igbtlinkid_(iConfig.getParameter<unsigned>("csvFormat_igbtlinkid")),
       csvFormat_ielinkid_(iConfig.getParameter<unsigned>("csvFormat_ielinkid")),
       csvFormat_ilayer_(iConfig.getParameter<unsigned>("csvFormat_ilayer")),
+      csvFormat_iring_(iConfig.getParameter<unsigned>("csvFormat_iring")),
       iovBeginTime_(iConfig.getParameter<long long unsigned int>("iovBeginTime")),
       pCablingMap_(std::make_unique<TrackerDetToDTCELinkCablingMap>()),
       record_(iConfig.getParameter<std::string>("record")) {
@@ -250,8 +253,9 @@ void DTCCablingMapProducer::LoadModulesToDTCCablingMapFromCSV(
                 << dtc_id << "," << gbt_id << "," << elink_id << ")";
           }
 
-          //unsigned const layerNum = strtoul(csvColumn.at(csvFormat_ilayer_).c_str(), nullptr, 10);
-          pCablingMap_->insert(dtcELinkId, detIdRaw, 0);	// layerNum
+          unsigned const layerNum = strtoul(csvColumn.at(csvFormat_ilayer_).c_str(), nullptr, 10);
+          unsigned const ringNum = strtoul(csvColumn.at(csvFormat_iring_).c_str(), nullptr, 10);
+          pCablingMap_->insert(dtcELinkId, detIdRaw, layerNum, ringNum);
         } else {
           if (verbosity_ >= 3) {
             edm::LogInfo("CSVParser") << "Reading CSV file: Skipped a short line: \"" << csvLine << "\"" << endl;

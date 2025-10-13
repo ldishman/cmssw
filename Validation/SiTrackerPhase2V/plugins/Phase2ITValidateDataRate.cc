@@ -53,6 +53,7 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 		std::unordered_map<unsigned int, std::vector<uint32_t>> dtcIdToDetIds_;
 		std::unordered_map<uint32_t, unsigned int> detIdToDtcId_;
 		std::unordered_map<uint32_t, unsigned int> detIdToLayerNum_;
+		std::unordered_map<uint32_t, unsigned int> detIdToRingNum_;
 		std::map<unsigned int, size_t> bitStreamSizesbyDTC;
 		std::unordered_map<unsigned int, unsigned int> dtcIdToIndex_;
 		std::unordered_map<unsigned int, unsigned int> layerNumToIndex_;
@@ -160,6 +161,13 @@ void Phase2ITValidateDataRate::dqmBeginRun(const edm::Run& iRun, const edm::Even
 		//std::cout << "cabling map detIdToLayerNum_[detId] = " << detIdToLayerNum_[detId] << " for detId " << detId << "\n";
 	}
 
+	// Build detIdToRingNum map (using detIdToDtcId map for detIds, but getting ringNums from cabling map)
+	detIdToRingNum_.clear();
+	for (const auto& [detId, dtcId] : detIdToDtcId_) {
+		detIdToRingNum_[detId] = cablingMap_->detIdToRingNum(detId);
+		//std::cout << "cabling map detIdToRingNum_[detId] = " << detIdToRingNum_[detId] << " for detId " << detId << "\n";
+	}
+
 }
 
 void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
@@ -181,13 +189,15 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 			continue;
 		}
 
-		unsigned int dtcId = detIdToDtcId_.at(det_id);
-		unsigned int layerNum = detIdToLayerNum_.at(det_id);
-		unsigned int idx = dtcIdToIndex_.at(dtcId);
-		unsigned int layerIdx = layerNumToIndex_.at(layerNum);
-		//std::cout << "dtcId: " << dtcId << " \n";
-		//std::cout << "layerNum: " << layerNum << " \n";
 		//std::cout << "det_id: " << det_id << " \n";
+		unsigned int dtcId = detIdToDtcId_.at(det_id);
+		//std::cout << "dtcId: " << dtcId << " \n";
+		unsigned int idx = dtcIdToIndex_.at(dtcId);
+		unsigned int layerNum = detIdToLayerNum_.at(det_id);
+		//std::cout << "layerNum: " << layerNum << " \n";
+		unsigned int ringNum = detIdToRingNum_.at(det_id);
+		//std::cout << "ringNum: " << ringNum << " \n";
+		unsigned int layerIdx = layerNumToIndex_.at(layerNum);
 		nModules += 1;
 		
 		// Loop over chips in current module, get bitStreamSize variable, and fill TH1Fs as needed

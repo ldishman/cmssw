@@ -2,8 +2,7 @@
 	<class name="TrackerDetToDTCELinkCablingMap" class_version="0">
 		<field name="cablingMapDetIdToDTCELinkId_" mapping="blob" />
 		<field name="cablingMapDTCELinkIdToDetId_" mapping="blob" />
-		<field name="cablingMapDetIdToLayerNum_" mapping="blob" />
-		<field name="cablingMapDetIdToRingNum_" mapping="blob" />
+		<field name="cablingMapDetIdToDetObject_" mapping="blob" />
 	</class>
 	<class name="DTCELinkId" class_version="0">
 	</class>

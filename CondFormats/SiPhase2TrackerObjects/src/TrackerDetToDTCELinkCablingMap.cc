@@ -37,33 +37,30 @@ TrackerDetToDTCELinkCablingMap::detIdToDTCELinkId(uint32_t const key) const {
   return DTCELinkId_itpair;
 }
 
-const TrackerDetToDTCELinkCablingMap::DetObject& TrackerDetToDTCELinkCablingMap::getDetObject(uint32_t const key) const {
-  auto const it = cablingMapDetIdToDetObject_.find(key);
-  if (it == cablingMapDetIdToDetObject_.end()) {
-    throw cms::Exception("TrackerDetToDTCELinkCablingMap") << "Unknown DetId = " << key << std::endl;
+unsigned int TrackerDetToDTCELinkCablingMap::detIdToLayerNum(uint32_t const key) const {
+  auto const it = cablingMapDetIdToLayerNum_.find(key);
+  
+  if (it == cablingMapDetIdToLayerNum_.end()) {
+    throw cms::Exception(
+        "TrackerDetToDTCELinkCablingMap has been asked to return a layerNum associated to a DetId, but the latter is "
+        "unknown to the map. ")
+        << " DetId = " << key << std::endl;
   }
+
   return it->second;
 }
 
-unsigned int TrackerDetToDTCELinkCablingMap::detIdToLayerNum(uint32_t const key) const {
-  return getDetObject(key).layer;
-  //return std::get<0>(getDetObject(key));
-}
-
 unsigned int TrackerDetToDTCELinkCablingMap::detIdToRingNum(uint32_t const key) const {
-  return getDetObject(key).ring;
-}
+  auto const it = cablingMapDetIdToRingNum_.find(key);
+  
+  if (it == cablingMapDetIdToRingNum_.end()) {
+    throw cms::Exception(
+        "TrackerDetToDTCELinkCablingMap has been asked to return a ringNum associated to a DetId, but the latter is "
+        "unknown to the map. ")
+        << " DetId = " << key << std::endl;
+  }
 
-TrackerDetToDTCELinkCablingMap::DetObject::Subdet TrackerDetToDTCELinkCablingMap::detIdToSubDet(uint32_t const key) const {
-  return getDetObject(key).subdet;
-}
-
-bool TrackerDetToDTCELinkCablingMap::detIdToZPlus(uint32_t const key) const {
-  return getDetObject(key).zPlus;
-}
-
-bool TrackerDetToDTCELinkCablingMap::detIdToXPlus(uint32_t const key) const {
-  return getDetObject(key).xPlus;
+  return it->second;
 }
 
 bool TrackerDetToDTCELinkCablingMap::knowsDTCELinkId(DTCELinkId const& key) const {
@@ -74,13 +71,13 @@ bool TrackerDetToDTCELinkCablingMap::knowsDetId(uint32_t key) const {
   return cablingMapDetIdToDTCELinkId_.find(key) != cablingMapDetIdToDTCELinkId_.end();
 }
 
-//bool TrackerDetToDTCELinkCablingMap::knowsLayerNum(unsigned int key) const {
-//  return cablingMapDetIdToLayerNum_.find(key) != cablingMapDetIdToLayerNum_.end();
-//}
-//
-//bool TrackerDetToDTCELinkCablingMap::knowsRingNum(unsigned int key) const {
-//  return cablingMapDetIdToRingNum_.find(key) != cablingMapDetIdToRingNum_.end();
-//}
+bool TrackerDetToDTCELinkCablingMap::knowsLayerNum(unsigned int key) const {
+  return cablingMapDetIdToLayerNum_.find(key) != cablingMapDetIdToLayerNum_.end();
+}
+
+bool TrackerDetToDTCELinkCablingMap::knowsRingNum(unsigned int key) const {
+  return cablingMapDetIdToRingNum_.find(key) != cablingMapDetIdToRingNum_.end();
+}
 
 std::vector<DTCELinkId> TrackerDetToDTCELinkCablingMap::getKnownDTCELinkIds() const {
   std::vector<DTCELinkId> knownDTCELinkIds(cablingMapDTCELinkIdToDetId_.size());
@@ -160,20 +157,16 @@ std::vector<std::pair<unsigned int, unsigned int>> TrackerDetToDTCELinkCablingMa
   return dtcIdsWithIndex;
 }
 
-void TrackerDetToDTCELinkCablingMap::insert(DTCELinkId const& dtcELinkId, uint32_t const detId, unsigned int const layerNum, 
-					    unsigned int const ringNum, TrackerDetToDTCELinkCablingMap::DetObject::Subdet const subdet, bool const zPlus,
-					    bool const xPlus) {
+void TrackerDetToDTCELinkCablingMap::insert(DTCELinkId const& dtcELinkId, uint32_t const detId, unsigned int const layerNum, unsigned int const ringNum) {
   cablingMapDTCELinkIdToDetId_.insert(std::make_pair(DTCELinkId(dtcELinkId), uint32_t(detId)));
   cablingMapDetIdToDTCELinkId_.insert(std::make_pair(uint32_t(detId), DTCELinkId(dtcELinkId)));
-  DetObject obj {layerNum, ringNum, subdet, zPlus, xPlus};
-  //cablingMapDetIdToDetObject_[detId] = obj;
-  cablingMapDetIdToDetObject_.insert({detId, obj});		// No need to recast these anyway
-  //cablingMapDetIdToRingNum_.insert(std::make_pair(detId, ringNum));
+  cablingMapDetIdToLayerNum_.insert(std::make_pair(detId, layerNum));		// No need to recast these anyway
+  cablingMapDetIdToRingNum_.insert(std::make_pair(detId, ringNum));
 }
 
 void TrackerDetToDTCELinkCablingMap::clear() {
   cablingMapDTCELinkIdToDetId_.clear();
   cablingMapDetIdToDTCELinkId_.clear();
-  cablingMapDetIdToDetObject_.clear();
-  //cablingMapDetIdToRingNum_.clear();
+  cablingMapDetIdToLayerNum_.clear();
+  cablingMapDetIdToRingNum_.clear();
 }

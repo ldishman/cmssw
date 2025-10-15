@@ -63,6 +63,19 @@ unsigned int TrackerDetToDTCELinkCablingMap::detIdToRingNum(uint32_t const key) 
   return it->second;
 }
 
+TrackerDetToDTCELinkCablingMap::Subdet TrackerDetToDTCELinkCablingMap::detIdToSubDet(uint32_t const key) const {
+  auto const it = cablingMapDetIdToSubDet_.find(key);
+
+  if (it == cablingMapDetIdToSubDet_.end()) {
+    throw cms::Exception(
+        "TrackerDetToDTCELinkCablingMap has been asked to return a subDet associated to a DetId, but the latter is "
+        "unknown to the map. ")
+        << " DetId = " << key << std::endl;
+  }
+
+  return it->second;
+}
+
 bool TrackerDetToDTCELinkCablingMap::knowsDTCELinkId(DTCELinkId const& key) const {
   return cablingMapDTCELinkIdToDetId_.find(key) != cablingMapDTCELinkIdToDetId_.end();
 }
@@ -157,11 +170,12 @@ std::vector<std::pair<unsigned int, unsigned int>> TrackerDetToDTCELinkCablingMa
   return dtcIdsWithIndex;
 }
 
-void TrackerDetToDTCELinkCablingMap::insert(DTCELinkId const& dtcELinkId, uint32_t const detId, unsigned int const layerNum, unsigned int const ringNum) {
+void TrackerDetToDTCELinkCablingMap::insert(DTCELinkId const& dtcELinkId, uint32_t const detId, unsigned int const layerNum, unsigned int const ringNum, Subdet subDet) {
   cablingMapDTCELinkIdToDetId_.insert(std::make_pair(DTCELinkId(dtcELinkId), uint32_t(detId)));
   cablingMapDetIdToDTCELinkId_.insert(std::make_pair(uint32_t(detId), DTCELinkId(dtcELinkId)));
   cablingMapDetIdToLayerNum_.insert(std::make_pair(detId, layerNum));		// No need to recast these anyway
   cablingMapDetIdToRingNum_.insert(std::make_pair(detId, ringNum));
+  cablingMapDetIdToSubDet_.insert(std::make_pair(detId, subDet));
 }
 
 void TrackerDetToDTCELinkCablingMap::clear() {
@@ -169,4 +183,5 @@ void TrackerDetToDTCELinkCablingMap::clear() {
   cablingMapDetIdToDTCELinkId_.clear();
   cablingMapDetIdToLayerNum_.clear();
   cablingMapDetIdToRingNum_.clear();
+  cablingMapDetIdToSubDet_.clear();
 }

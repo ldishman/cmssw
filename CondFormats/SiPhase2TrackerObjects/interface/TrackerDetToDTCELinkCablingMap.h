@@ -31,6 +31,8 @@ public:
   TrackerDetToDTCELinkCablingMap();
   virtual ~TrackerDetToDTCELinkCablingMap();
 
+  enum Subdet { PXB, FPIX_1, FPIX_2 };
+
   /// Resolves the raw DetId of the detector connected to the eLink identified by a DTCELinkId
   std::unordered_map<DTCELinkId, uint32_t>::const_iterator dtcELinkIdToDetId(DTCELinkId const&) const;
 
@@ -44,6 +46,9 @@ public:
 
   /// Resolves the ring number associated with the detector identified by the given raw DetId
   unsigned int detIdToRingNum(uint32_t const key) const;
+
+  /// Resolves the subdetector associated with the detector identified by the given raw DetId
+  Subdet detIdToSubDet(uint32_t const key) const;
 
   /// Returns true if the cabling map has a record corresponding to a detector identified by the given raw DetId
   bool knowsDTCELinkId(DTCELinkId const&) const;
@@ -76,7 +81,7 @@ public:
   std::vector<uint32_t> getKnownDetIds() const;
 
   /// Inserts in the cabling map a record corresponding to the connection of an eLink identified by the given DTCELinkId to a detector identified by the given raw DetId
-  void insert(DTCELinkId const&, uint32_t const, unsigned int const, unsigned int const);
+  void insert(DTCELinkId const&, uint32_t const, unsigned int const, unsigned int const, Subdet const);
 
   /// Clears the map
   void clear();
@@ -86,6 +91,7 @@ private:
   std::unordered_map<DTCELinkId, uint32_t> cablingMapDTCELinkIdToDetId_;
   std::unordered_map<uint32_t, unsigned int> cablingMapDetIdToLayerNum_;
   std::unordered_map<uint32_t, unsigned int> cablingMapDetIdToRingNum_;
+  std::unordered_map<uint32_t, Subdet> cablingMapDetIdToSubDet_;
 
   COND_SERIALIZABLE;
 };

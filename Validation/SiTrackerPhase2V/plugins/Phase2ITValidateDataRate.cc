@@ -54,9 +54,20 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 		std::unordered_map<uint32_t, unsigned int> detIdToDtcId_;
 		std::unordered_map<uint32_t, unsigned int> detIdToLayerNum_;
 		std::unordered_map<uint32_t, unsigned int> detIdToRingNum_;
+		std::unordered_map<uint32_t, TrackerDetToDTCELinkCablingMap::Subdet> detIdToSubDet_;
 		std::map<unsigned int, size_t> bitStreamSizesbyDTC;
 		std::unordered_map<unsigned int, unsigned int> dtcIdToIndex_;
 		std::unordered_map<unsigned int, unsigned int> layerNumToIndex_;
+
+		// Declare toString helper for Subdet object
+		std::string toString(TrackerDetToDTCELinkCablingMap::Subdet subDet) const {
+			switch (subDet) {
+				case TrackerDetToDTCELinkCablingMap::PXB:    return "PXB";
+				case TrackerDetToDTCELinkCablingMap::FPIX_1: return "FPIX_1";
+				case TrackerDetToDTCELinkCablingMap::FPIX_2: return "FPIX_2";
+				default:                                     return "UNKNOWN";
+			}
+		}
 		
 		// Declare TH1F object vectors
 		std::vector<TH1F*> thist_bitStreamSizePerDTC_;
@@ -168,6 +179,13 @@ void Phase2ITValidateDataRate::dqmBeginRun(const edm::Run& iRun, const edm::Even
 		//std::cout << "cabling map detIdToRingNum_[detId] = " << detIdToRingNum_[detId] << " for detId " << detId << "\n";
 	}
 
+	// Build detIdToSubDet map (using detIdToDtcId map for detIds, but getting subDets from cabling map)
+	detIdToSubDet_.clear();
+	for (const auto& [detId, dtcId] : detIdToDtcId_) {
+		detIdToSubDet_[detId] = cablingMap_->detIdToSubDet(detId);
+		//std::cout << "cabling map detIdToSubDet_[detId] = " << detIdToSubDet_[detId] << " with toString val: " << toString(detIdToSubDet_[detId]) << " for detId " << detId << "\n";	// Note this prints 0, 1, or 2 for value, then PXB, FPIX_1, or FPIX_2 for toString(value)
+	}
+
 }
 
 void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
@@ -197,6 +215,9 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 		//std::cout << "layerNum: " << layerNum << " \n";
 		unsigned int ringNum = detIdToRingNum_.at(det_id);
 		//std::cout << "ringNum: " << ringNum << " \n";
+		TrackerDetToDTCELinkCablingMap::Subdet subDet = detIdToSubDet_.at(det_id);
+		//std::cout << "subDet : " << subDet << "\n";
+		//std::cout << "subDet label : " << toString(subDet) << "\n";
 		unsigned int layerIdx = layerNumToIndex_.at(layerNum);
 		nModules += 1;
 		

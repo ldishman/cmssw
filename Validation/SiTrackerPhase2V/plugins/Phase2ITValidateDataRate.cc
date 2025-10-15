@@ -33,7 +33,7 @@
 
 class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 	public:
-		// Declare explicit constructor, destructor, member functions (or overrides) 
+		// Declare explicit constructor, destructor, and member functions (or overrides) 
 		explicit Phase2ITValidateDataRate(const edm::ParameterSet&);
 		~Phase2ITValidateDataRate() override;
 		void dqmBeginRun(const edm::Run& iRun, const edm::EventSetup& iSetup) override;
@@ -42,12 +42,7 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 		static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
 	private:
-		// Declare histogram pointers
-		TH1F* thist_bitStreamSize = nullptr;
-		TH1F* thist_bitStreamSizeModule = nullptr;
-		TH1F* thist_bitStreamSizeDTC = nullptr;
-
-		// Declare other plugin member functions/variables
+		// Declare other plugin member functions and data organization variables
 		void bookLayerHistos(DQMStore::IBooker& ibooker, uint32_t det_it, const std::string& subdir);
 		std::vector<std::pair<unsigned int, unsigned int>> knownDTCIdsWithIndex_;
 		std::unordered_map<unsigned int, std::vector<uint32_t>> dtcIdToDetIds_;
@@ -56,10 +51,8 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 		std::unordered_map<uint32_t, unsigned int> detIdToRingNum_;
 		std::unordered_map<uint32_t, TrackerDetToDTCELinkCablingMap::Subdet> detIdToSubDet_;
 		std::map<unsigned int, size_t> bitStreamSizesbyDTC;
-		std::unordered_map<unsigned int, unsigned int> dtcIdToIndex_;
-		std::unordered_map<unsigned int, unsigned int> layerNumToIndex_;
 
-		// Declare toString helper for Subdet object
+		// Declare toString helper for Subdet enum object in cabling map class
 		std::string toString(TrackerDetToDTCELinkCablingMap::Subdet subDet) const {
 			switch (subDet) {
 				case TrackerDetToDTCELinkCablingMap::PXB:    return "PXB";
@@ -69,9 +62,20 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 			}
 		}
 		
+		// Declare histogram pointers
+		TH1F* thist_bitStreamSize = nullptr;
+		TH1F* thist_bitStreamSizeModule = nullptr;
+		TH1F* thist_bitStreamSizeDTC = nullptr;
+
+		// Declare needed index maps for vector histograms
+		std::unordered_map<unsigned int, unsigned int> dtcIdToIndex_;
+		std::unordered_map<unsigned int, unsigned int> layerNumToIndex_;
+		std::map<std::tuple<int, int, int>, unsigned int> sectionToIndex_;
+
 		// Declare TH1F object vectors
 		std::vector<TH1F*> thist_bitStreamSizePerDTC_;
 		std::vector<TH1F*> thist_bitStreamSizePerLayer_;
+		std::vector<TH1F*> thist_bitStreamSizePerSection_;
 
 		// Declare other needed configs/inputs/tokens/pointers
 		edm::ParameterSet config_;
@@ -123,6 +127,7 @@ Phase2ITValidateDataRate::Phase2ITValidateDataRate(const edm::ParameterSet& iCon
 		int num_layers = 8;
 		int layerNums[num_layers];
 		
+		// Create array for all valid layer numbers (1-8)
 		for (int i = 0; i <= num_layers-1; i++) {
 			layerNums[i] = i+1;
 		}
@@ -133,6 +138,28 @@ Phase2ITValidateDataRate::Phase2ITValidateDataRate(const edm::ParameterSet& iCon
 			thist_bitStreamSizePerLayer_[i] = fs->make<TH1F>(("thist_bitStreamSizePerLayer_" + std::to_string(layerNums[i])).c_str(), "", 500, 0., 10000.);
 			layerNumToIndex_[layerNums[i]] = i;
 		}
+
+		// Write remaining setup for Section Histos (overall needs subDet, layerNum, ringNum)
+		int num_rings = 5;
+		int ringNums[num_rings] = {1, 2, 3, 4, 5};
+		int num_subDets = 3;
+		int subDetIdxs[num_subDets] = {0, 1, 2};
+		int num_sections = num_subDets * num_rings * num_layers;
+
+		// Create TH1F for each section (subdet -> layer -> ring)
+		thist_bitStreamSizePerSection_.resize(num_sections, nullptr);
+		int count = 0;
+
+		for (int i = 0; i < num_subDets; i++) {
+			for (int j = 0; j < num_layers; j++) {
+				for (int k = 0; k < num_rings; k++) {
+					thist_bitStreamSizePerSection_[count] = fs->make<TH1F>(("thist_bitStreamSizePerSection_" + toString(static_cast<TrackerDetToDTCELinkCablingMap::Subdet>(subDetIdxs[i])) + "_" + std::to_string(layerNums[j]) + "_" + std::to_string(ringNums[k])).c_str(), "", 500, 0., 10000.);
+					sectionToIndex_[{subDetIdxs[i], layerNums[j], ringNums[k]}] = count;
+					count++;
+				}
+			}
+		}
+		
 
         }
 
@@ -219,6 +246,7 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 		//std::cout << "subDet : " << subDet << "\n";
 		//std::cout << "subDet label : " << toString(subDet) << "\n";
 		unsigned int layerIdx = layerNumToIndex_.at(layerNum);
+		auto idx_section = sectionToIndex_.at({subDet, layerNum, ringNum});
 		nModules += 1;
 		
 		// Loop over chips in current module, get bitStreamSize variable, and fill TH1Fs as needed
@@ -226,6 +254,7 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 			size_t bitStreamSize = bitStream.get_bitstream().size();	// This bitStreamSize is the only variable used to Fill
 			thist_bitStreamSize->Fill(bitStreamSize);
 			thist_bitStreamSizePerDTC_[idx]->Fill(bitStreamSize);
+			thist_bitStreamSizePerSection_[idx_section]->Fill(bitStreamSize);
 			thist_bitStreamSizePerLayer_[layerIdx]->Fill(bitStreamSize);
 			bitStreamSizeModule += bitStreamSize;
 		}

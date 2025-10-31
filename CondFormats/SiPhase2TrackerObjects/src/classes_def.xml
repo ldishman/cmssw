@@ -5,6 +5,7 @@
 		<field name="cablingMapDetIdToLayerNum_" mapping="blob" />
 		<field name="cablingMapDetIdToRingNum_" mapping="blob" />
 		<field name="cablingMapDetIdToSubDet_" mapping="blob" />
+		<field name="cablingMapDetIdToNElinks_" mapping="blob" />
 	</class>
 	<class name="DTCELinkId" class_version="0">
 	</class>

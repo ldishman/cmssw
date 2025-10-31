@@ -50,6 +50,7 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 		std::unordered_map<uint32_t, unsigned int> detIdToLayerNum_;
 		std::unordered_map<uint32_t, unsigned int> detIdToRingNum_;
 		std::unordered_map<uint32_t, TrackerDetToDTCELinkCablingMap::Subdet> detIdToSubDet_;
+		std::unordered_map<uint32_t, unsigned int> detIdToNElinks_;
 		std::map<unsigned int, size_t> bitStreamSizesbyDTC;
 
 		// Declare toString helper for Subdet enum object in cabling map class
@@ -245,6 +246,13 @@ void Phase2ITValidateDataRate::dqmBeginRun(const edm::Run& iRun, const edm::Even
 		//std::cout << "cabling map detIdToSubDet_[detId] = " << detIdToSubDet_[detId] << " with toString val: " << toString(detIdToSubDet_[detId]) << " for detId " << detId << "\n";	// Note this prints 0, 1, or 2 for value, then PXB, FPIX_1, or FPIX_2 for toString(value)
 	}
 
+	// Build detIdToNElinks map (using detIdToDtcId map for detIds, but getting nElinks from cabling map)
+	detIdToNElinks_.clear();
+	for (const auto& [detId, dtcId] : detIdToDtcId_) {
+		detIdToNElinks_[detId] = cablingMap_->detIdToNElinks(detId);
+		//std::cout << "cabling map detIdToNElinks_[detId] = " << detIdToNElinks_[detId] << " for detId " << detId << "\n";
+	}
+
 }
 
 void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
@@ -277,9 +285,13 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 		TrackerDetToDTCELinkCablingMap::Subdet subDet = detIdToSubDet_.at(det_id);
 		//std::cout << "subDet : " << subDet << "\n";
 		//std::cout << "subDet label : " << toString(subDet) << "\n";
+		unsigned int nElinks = detIdToNElinks_.at(det_id);
+		//std::cout << "nElinks: " << nElinks << " \n";
+
 		unsigned int layerIdx = layerNumToIndex_.at(layerNum);
 		auto idx_section = sectionToIndex_.at({subDet, layerNum, ringNum});
 		auto idx_paperSection = 0;
+		
 
 		// This is not robust, assumes you know the map's structure
 		if (toString(subDet)=="PXB" && layerNum<5) {

@@ -94,6 +94,7 @@ private:
   unsigned csvFormat_ilayer_;
   unsigned csvFormat_iring_;
   unsigned csvFormat_isubdet_;
+  unsigned csvFormat_inelinks_;
   cond::Time_t iovBeginTime_;
   std::unique_ptr<TrackerDetToDTCELinkCablingMap> pCablingMap_;
   std::string record_;
@@ -112,6 +113,7 @@ void DTCCablingMapProducer::fillDescriptions(edm::ConfigurationDescriptions& des
   desc.add<unsigned>("csvFormat_ilayer", 0);
   desc.add<unsigned>("csvFormat_iring", 0);
   desc.add<unsigned>("csvFormat_isubdet", 0);
+  desc.add<unsigned>("csvFormat_inelinks", 0);
   desc.add<long long unsigned int>("iovBeginTime", 1);
   desc.add<std::string>("record", "TrackerDTCCablingMapRcd");
   desc.add<std::vector<std::string>>("modulesToDTCCablingCSVFileNames", std::vector<std::string>());
@@ -128,6 +130,7 @@ DTCCablingMapProducer::DTCCablingMapProducer(const edm::ParameterSet& iConfig)
       csvFormat_ilayer_(iConfig.getParameter<unsigned>("csvFormat_ilayer")),
       csvFormat_iring_(iConfig.getParameter<unsigned>("csvFormat_iring")),
       csvFormat_isubdet_(iConfig.getParameter<unsigned>("csvFormat_isubdet")),
+      csvFormat_inelinks_(iConfig.getParameter<unsigned>("csvFormat_inelinks")),
       iovBeginTime_(iConfig.getParameter<long long unsigned int>("iovBeginTime")),
       pCablingMap_(std::make_unique<TrackerDetToDTCELinkCablingMap>()),
       record_(iConfig.getParameter<std::string>("record")) {
@@ -258,6 +261,7 @@ void DTCCablingMapProducer::LoadModulesToDTCCablingMapFromCSV(
 
           unsigned const layerNum = strtoul(csvColumn.at(csvFormat_ilayer_).c_str(), nullptr, 10);
           unsigned const ringNum = strtoul(csvColumn.at(csvFormat_iring_).c_str(), nullptr, 10);
+          unsigned const nElinks = strtoul(csvColumn.at(csvFormat_inelinks_).c_str(), nullptr, 10);
 
           std::string const& subdetStr = csvColumn.at(csvFormat_isubdet_);
           TrackerDetToDTCELinkCablingMap::Subdet subDet;
@@ -270,7 +274,7 @@ void DTCCablingMapProducer::LoadModulesToDTCCablingMapFromCSV(
             subDet = TrackerDetToDTCELinkCablingMap::PXB; // fallback
           }
 
-          pCablingMap_->insert(dtcELinkId, detIdRaw, layerNum, ringNum, subDet);
+          pCablingMap_->insert(dtcELinkId, detIdRaw, layerNum, ringNum, subDet, nElinks);
 
         } else {
           if (verbosity_ >= 3) {

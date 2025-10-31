@@ -74,7 +74,7 @@ process.dqm_comm = cms.Sequence(process.dqmEnv)
 
 # Output definition - DQM output
 process.DQMoutput = cms.OutputModule("DQMRootOutputModule",
-    fileName = cms.untracked.string('dqm_output.root')
+    fileName = cms.untracked.string('/eos/user/l/ldishman/DQMtests/dqm_output.root')
 )
 
 process.TFileService = cms.Service("TFileService",

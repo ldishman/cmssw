@@ -71,11 +71,13 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 		std::unordered_map<unsigned int, unsigned int> dtcIdToIndex_;
 		std::unordered_map<unsigned int, unsigned int> layerNumToIndex_;
 		std::map<std::tuple<int, int, int>, unsigned int> sectionToIndex_;
+		std::map<std::tuple<int, int>, unsigned int> paperSectionToIndex_;
 
 		// Declare TH1F object vectors
 		std::vector<TH1F*> thist_bitStreamSizePerDTC_;
 		std::vector<TH1F*> thist_bitStreamSizePerLayer_;
 		std::vector<TH1F*> thist_bitStreamSizePerSection_;
+		std::vector<TH1F*> thist_bitStreamSizePerPaperSection_;
 
 		// Declare other needed configs/inputs/tokens/pointers
 		edm::ParameterSet config_;
@@ -159,7 +161,37 @@ Phase2ITValidateDataRate::Phase2ITValidateDataRate(const edm::ParameterSet& iCon
 				}
 			}
 		}
+
+		// Write setup for Paper Section Histos (defined by TBPX:L1-L4 TFPX:R1-R4 TEPX:R1-R5)
+		int num_paper_TBPX = 4;		// layers
+		int num_paper_TFPX = 4;		// rings
+		int num_paper_TEPX = 5;		// rings
+		int num_paper_sections = num_paper_TBPX + num_paper_TFPX + num_paper_TEPX;     // just counting above defined paper sections
 		
+		// Resize TH1F paper sections vector for ALL
+		thist_bitStreamSizePerPaperSection_.resize(num_paper_sections, nullptr);
+		int t = 0;
+
+		// Create TH1F for each paper section in TBPX (L1-L4)
+		for (int i = 0; i < num_paper_TBPX; i++) {
+			thist_bitStreamSizePerPaperSection_[t] = fs->make<TH1F>(("thist_bitStreamSizePerPaperSection_TBPX_L" + std::to_string(layerNums[i])).c_str(), "", 500, 0., 10000.);
+			paperSectionToIndex_[{TrackerDetToDTCELinkCablingMap::PXB, layerNums[i]}] = t;
+			t++;
+		}
+		
+		// Create TH1F for each paper section in TFPX (R1-R4)
+		for (int i = 0; i < num_paper_TFPX; i++) {
+			thist_bitStreamSizePerPaperSection_[t] = fs->make<TH1F>(("thist_bitStreamSizePerPaperSection_TFPX_R" + std::to_string(ringNums[i])).c_str(), "", 500, 0., 10000.);
+			paperSectionToIndex_[{TrackerDetToDTCELinkCablingMap::FPIX_1, ringNums[i]}] = t;
+			t++;
+		}
+		
+		// Create TH1F for each paper section in TEPX (R1-R5)
+		for (int i = 0; i < num_paper_TEPX; i++) {
+			thist_bitStreamSizePerPaperSection_[t] = fs->make<TH1F>(("thist_bitStreamSizePerPaperSection_TEPX_R" + std::to_string(ringNums[i])).c_str(), "", 500, 0., 10000.);
+			paperSectionToIndex_[{TrackerDetToDTCELinkCablingMap::FPIX_2, ringNums[i]}] = t;
+			t++;
+		}
 
         }
 
@@ -247,6 +279,16 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 		//std::cout << "subDet label : " << toString(subDet) << "\n";
 		unsigned int layerIdx = layerNumToIndex_.at(layerNum);
 		auto idx_section = sectionToIndex_.at({subDet, layerNum, ringNum});
+		auto idx_paperSection = 0;
+
+		// This is not robust, assumes you know the map's structure
+		if (toString(subDet)=="PXB" && layerNum<5) {
+			idx_paperSection = paperSectionToIndex_.at({subDet, layerNum});
+		}
+		else if ((toString(subDet)=="FPIX_1" && ringNum<5) || (toString(subDet)=="FPIX_2" && ringNum<6)) {
+			idx_paperSection = paperSectionToIndex_.at({subDet, ringNum});
+		}
+
 		nModules += 1;
 		
 		// Loop over chips in current module, get bitStreamSize variable, and fill TH1Fs as needed
@@ -255,6 +297,7 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 			thist_bitStreamSize->Fill(bitStreamSize);
 			thist_bitStreamSizePerDTC_[idx]->Fill(bitStreamSize);
 			thist_bitStreamSizePerSection_[idx_section]->Fill(bitStreamSize);
+			thist_bitStreamSizePerPaperSection_[idx_paperSection]->Fill(bitStreamSize);
 			thist_bitStreamSizePerLayer_[layerIdx]->Fill(bitStreamSize);
 			bitStreamSizeModule += bitStreamSize;
 		}

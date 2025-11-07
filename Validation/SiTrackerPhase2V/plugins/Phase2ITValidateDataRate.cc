@@ -53,6 +53,9 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 		std::unordered_map<uint32_t, unsigned int> detIdToNElinks_;
 		std::map<unsigned int, size_t> bitStreamSizesbyDTC;
 
+		// Declare MonitorElement objects (DQM version of histos w/ some metadata)
+		MonitorElement* me_bitStreamSize;
+
 		// Declare toString helper for Subdet enum object in cabling map class
 		std::string toString(TrackerDetToDTCELinkCablingMap::Subdet subDet) const {
 			switch (subDet) {
@@ -307,6 +310,7 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 		for (const auto& bitStream : detset) {
 			size_t bitStreamSize = bitStream.get_bitstream().size();	// This bitStreamSize is the only variable used to Fill
 			thist_bitStreamSize->Fill(bitStreamSize);
+			me_bitStreamSize->Fill(bitStreamSize);
 			thist_bitStreamSizePerDTC_[idx]->Fill(bitStreamSize);
 			thist_bitStreamSizePerSection_[idx_section]->Fill(bitStreamSize);
 			thist_bitStreamSizePerPaperSection_[idx_paperSection]->Fill(bitStreamSize);
@@ -330,12 +334,13 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 
 }
 
-// Function unused for now
 void Phase2ITValidateDataRate::bookHistograms(DQMStore::IBooker& ibooker, edm::Run const& iRun, edm::EventSetup const& iSetup) {
 	std::string top_folder = config_.getParameter<std::string>("TopFolderName");
 	edm::LogInfo("Phase2ITValidateDataRate") << " Booking Histograms in: " << top_folder;
 
 	ibooker.setCurrentFolder(top_folder);
+
+	me_bitStreamSize = ibooker.book1D("bitStreamSize_direct", "Bit Stream Size (direct)", 2000, 0., 20000.);
 }
 
 // Function unused for now

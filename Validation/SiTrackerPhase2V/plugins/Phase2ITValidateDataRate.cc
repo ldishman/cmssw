@@ -69,6 +69,7 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 		// Declare histogram pointers
 		TH1F* thist_bitStreamSize = nullptr;
 		TH1F* thist_bitStreamSizeModule = nullptr;
+		TH1F* thist_occupancyELink = nullptr;
 		TH1F* thist_bitStreamSizeDTC = nullptr;
 
 		// Declare needed index maps for vector histograms
@@ -107,6 +108,7 @@ Phase2ITValidateDataRate::Phase2ITValidateDataRate(const edm::ParameterSet& iCon
       	      	edm::Service<TFileService> fs;
       	      	thist_bitStreamSize = fs->make<TH1F>("bitStreamSize_direct", "", 2000, 0., 20000.);
       	      	thist_bitStreamSizeModule = fs->make<TH1F>("bitStreamSizeModule_direct", "", 2000, 0., 20000.);
+      	      	thist_occupancyELink = fs->make<TH1F>("occupancyOverELinks_direct", "", 60, 0., 3.3);
                 thist_bitStreamSizeDTC = fs->make<TH1F>("thist_bitStreamSizeDTC_direct", "", 100, 0., 800000.);
 		
 		// Write setup for DTC Histos
@@ -210,7 +212,6 @@ void Phase2ITValidateDataRate::dqmBeginRun(const edm::Run& iRun, const edm::Even
 	cablingMap_ = &iSetup.getData(cablingMapToken_);	// cablingMap from event setup
 	knownDTCIdsWithIndex_ = cablingMap_->getKnownDTCIdsWithIndex();
 	
-
 	// Build dtcIdToDetIds map (directly from cabling map)
 	dtcIdToDetIds_.clear();
 	for (const auto& pair : knownDTCIdsWithIndex_) {
@@ -265,6 +266,9 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 	// Define (successfully matched) module counter for sanity check
 	int nModules = 0;
 
+	// Count total number of elinks (as in, add one for each elink per module)
+	int num_elinks = 0;
+
 	// Loop over modules in handle
 	for (const auto& detset : *handle) {
 		size_t bitStreamSizeModule = 0.;
@@ -315,16 +319,32 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 			thist_bitStreamSizePerSection_[idx_section]->Fill(bitStreamSize);
 			thist_bitStreamSizePerPaperSection_[idx_paperSection]->Fill(bitStreamSize);
 			thist_bitStreamSizePerLayer_[layerIdx]->Fill(bitStreamSize);
+
 			bitStreamSizeModule += bitStreamSize;
 		}
 
 		thist_bitStreamSizeModule->Fill(bitStreamSizeModule);
+
+		// Define some constants for E-Link occupancy
+		double trigger_rate = 750.0e3;	// Hz
+		double bandwidth = 1.28e9;	// bits/s
+
+		for (unsigned int i = 0; i < nElinks; i++) {
+			double occupancy = (static_cast<double>(bitStreamSizeModule) * trigger_rate) / (static_cast<double>(nElinks) * bandwidth);
+			thist_occupancyELink->Fill(occupancy);
+			num_elinks += 1;
+		}
+
+
 		bitStreamSizesbyDTC[dtcId] += bitStreamSizeModule;
 
 	}
 
 	// Check (successfully matched) module counter
 	std::cout << "nModules: " << nModules << " \n";
+	
+	// Check total number of elinks (adding 1 for every elink attached to each module)
+	std::cout << "num elinks: " << num_elinks << " \n";
 
 	// Fill TH1F for bitStreamSize across all DTCs
 	for (const auto& [dtcId, totalBitStream] : bitStreamSizesbyDTC) {

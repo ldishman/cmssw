@@ -17,8 +17,6 @@ __init__.py
 # ignore large root files
 EventFilter/Phase2PixelRawToDigi/test/*.root
 *.root
-*.db
-*.csv
 
 # ignore test file
 Validation/SiTrackerPhase2V/plugins/Phase2ITValidateBitStream.cc

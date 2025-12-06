@@ -53,6 +53,9 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 		std::unordered_map<uint32_t, unsigned int> detIdToNElinks_;
 		std::map<unsigned int, size_t> bitStreamSizesbyDTC;
 
+		// Declare slinkMap as <dtcId, slinkId> -> <num_times_filled, totalbitStream>
+		std::map<std::pair<int, int>, std::pair<int, int>> slinkMap_;
+
 		// Declare MonitorElement objects (DQM version of histos w/ some metadata)
 		MonitorElement* me_bitStreamSize;
 
@@ -65,11 +68,16 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 				default:                                     return "UNKNOWN";
 			}
 		}
+
+		// Declare some widely used nums
+		int nDTCs = 36;
+		int nslinksPerDTC = 16;
 		
 		// Declare histogram pointers
 		TH1F* thist_bitStreamSize = nullptr;
 		TH1F* thist_bitStreamSizeModule = nullptr;
 		TH1F* thist_occupancyELink = nullptr;
+		TH1F* thist_occupancySLink = nullptr;
 		TH1F* thist_bitStreamSizeDTC = nullptr;
 
 		// Declare needed index maps for vector histograms
@@ -109,7 +117,8 @@ Phase2ITValidateDataRate::Phase2ITValidateDataRate(const edm::ParameterSet& iCon
       	      	thist_bitStreamSize = fs->make<TH1F>("bitStreamSize_direct", "", 2000, 0., 20000.);
       	      	thist_bitStreamSizeModule = fs->make<TH1F>("bitStreamSizeModule_direct", "", 2000, 0., 20000.);
       	      	thist_occupancyELink = fs->make<TH1F>("occupancyOverELinks_direct", "", 60, 0., 3.3);
-                thist_bitStreamSizeDTC = fs->make<TH1F>("thist_bitStreamSizeDTC_direct", "", 100, 0., 800000.);
+				thist_occupancySLink = fs->make<TH1F>("occupancyOverSLinks_direct", "", 300, 0., 120000.);
+		thist_bitStreamSizeDTC = fs->make<TH1F>("thist_bitStreamSizeDTC_direct", "", 100, 0., 800000.);
 		
 		// Write setup for DTC Histos
 		int num_dtcs = 36;
@@ -257,6 +266,9 @@ void Phase2ITValidateDataRate::dqmBeginRun(const edm::Run& iRun, const edm::Even
 		//std::cout << "cabling map detIdToNElinks_[detId] = " << detIdToNElinks_[detId] << " for detId " << detId << "\n";
 	}
 
+	// Clear map for <dtc,slink> -> <num_times_filled,totalBitStream for each 36*16 = 576 slinks (36 DTCs, 16 slinks per DTC)
+	slinkMap_.clear();
+
 }
 
 void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
@@ -334,11 +346,28 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 			thist_occupancyELink->Fill(occupancy);
 			num_elinks += 1;
 		}
+		
+		// Fill slinkMap in order based on DTC (pseudo-slink-occupancy), and repeat when all slinks full for DTC
+		// Count how many modules have already been assigned to this DTC
+		int assignedSoFar = 0;
+		for (int i = 0; i < nslinksPerDTC; i++) {
+			auto it = slinkMap_.find({dtcId, i});
+			if (it != slinkMap_.end()) assignedSoFar += it->second.first;
+			// std::cout << "Modules assignedSoFar for DTC " << dtcId << " : " << assignedSoFar << " \n";
+		}
+		
+		// Pick the slink in order
+		int slinkId = assignedSoFar % 16;
+		// std::cout << "SLinkId for module " << det_id << " : " << slinkId << " \n";
 
-
+		// Update the (actual) map entry (via [])
+		auto &entry = slinkMap_[{dtcId, slinkId}];
+		entry.first += 1;
+		entry.second += bitStreamSizeModule;
+		
 		bitStreamSizesbyDTC[dtcId] += bitStreamSizeModule;
 
-	}
+	} // End module loop
 
 	// Check (successfully matched) module counter
 	std::cout << "nModules: " << nModules << " \n";
@@ -350,6 +379,27 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 	for (const auto& [dtcId, totalBitStream] : bitStreamSizesbyDTC) {
 		std::cout << "DtcId: " << dtcId << " and totalBitStream: " << totalBitStream << " \n";
 		thist_bitStreamSizeDTC->Fill(totalBitStream);
+	}
+
+	// Remake array of all valid DTC Ids (11-19, 21-29, 31-39, 41-49)
+	// Fix redundancy later
+	int dtcIds[nDTCs];
+	int index = 0;
+	for (int i = 0; i <= 3; i ++) {
+		int start = 11 + i*10;
+		for (int j = start; j < start + 9; j++) {
+			dtcIds[index++] = j;
+		}
+	}
+
+	// Take filled slinkMap with bitStream info and fill 1 histo with totals
+	for (int i = 0; i < nDTCs; i++) {
+		for (int j = 0; j < nslinksPerDTC; j++) {
+			// Fill slink histogram with total bitStreamSize for each slink
+			int totalBitStream = slinkMap_[{dtcIds[i], j}].second;
+			thist_occupancySLink->Fill(totalBitStream);
+			// std::cout << "DtcId: " << dtcIds[i] << ", slink: " << j << ", totalBitStream: " << totalBitStream << " \n";
+		}
 	}
 
 }

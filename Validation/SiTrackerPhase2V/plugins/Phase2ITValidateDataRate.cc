@@ -88,6 +88,7 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 
 		// Declare TH1F object vectors
 		std::vector<TH1F*> thist_bitStreamSizePerDTC_;
+		std::vector<TH1F*> thist_bitStreamSizeSLinkPerDTC_;
 		std::vector<TH1F*> thist_bitStreamSizePerLayer_;
 		std::vector<TH1F*> thist_bitStreamSizePerSection_;
 		std::vector<TH1F*> thist_bitStreamSizePerPaperSection_;
@@ -118,14 +119,14 @@ Phase2ITValidateDataRate::Phase2ITValidateDataRate(const edm::ParameterSet& iCon
       	      	thist_bitStreamSizeModule = fs->make<TH1F>("bitStreamSizeModule_direct", "", 2000, 0., 20000.);
       	      	thist_occupancyELink = fs->make<TH1F>("occupancyOverELinks_direct", "", 60, 0., 3.3);
 				thist_occupancySLink = fs->make<TH1F>("occupancyOverSLinks_direct", "", 300, 0., 120000.);
-		thist_bitStreamSizeDTC = fs->make<TH1F>("thist_bitStreamSizeDTC_direct", "", 100, 0., 800000.);
+				thist_bitStreamSizeDTC = fs->make<TH1F>("thist_bitStreamSizeDTC_direct", "", 100, 0., 800000.);
 		
 		// Write setup for DTC Histos
 		int num_dtcs = 36;
 		int dtcIds[num_dtcs];
 		int index = 0;
 
-                // Create array for all valid DTC Ids (11-19, 21-29, 31-39, 41-49)
+        // Create array for all valid DTC Ids (11-19, 21-29, 31-39, 41-49)
 		for (int i = 0; i <= 3; i ++) {
 			int start = 11 + i*10;
 			for (int j = start; j < start + 9; j++) {
@@ -133,10 +134,15 @@ Phase2ITValidateDataRate::Phase2ITValidateDataRate(const edm::ParameterSet& iCon
 			}
 		}
 
+		// Define a value for use below
+		double NSlinksPerDTC = 16.0;
+
 		// Create TH1F for each DTC
                 thist_bitStreamSizePerDTC_.resize(num_dtcs, nullptr);
+				thist_bitStreamSizeSLinkPerDTC_.resize(num_dtcs, nullptr);
                 for (int i = 0; i < num_dtcs; i++) {
                         thist_bitStreamSizePerDTC_[i] = fs->make<TH1F>(("thist_bitStreamSizePerDTC_" + std::to_string(dtcIds[i])).c_str(), "", 500, 0., 8000.);
+						thist_bitStreamSizeSLinkPerDTC_[i] = fs->make<TH1F>(("thist_bitStreamSizeSLinkPerDTC_" + std::to_string(dtcIds[i])).c_str(), "", NSlinksPerDTC, -0.5, NSlinksPerDTC-0.5);
                         dtcIdToIndex_[dtcIds[i]] = i;
                 }
 
@@ -395,10 +401,14 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 	// Take filled slinkMap with bitStream info and fill 1 histo with totals
 	for (int i = 0; i < nDTCs; i++) {
 		for (int j = 0; j < nslinksPerDTC; j++) {
-			// Fill slink histogram with total bitStreamSize for each slink
 			int totalBitStream = slinkMap_[{dtcIds[i], j}].second;
+			// Fill slink histogram with total bitStreamSize for each slink
 			thist_occupancySLink->Fill(totalBitStream);
 			// std::cout << "DtcId: " << dtcIds[i] << ", slink: " << j << ", totalBitStream: " << totalBitStream << " \n";
+			// Fill "histo" for slink distribution over EACH DTC (36 histos)
+			thist_bitStreamSizeSLinkPerDTC_[i]->Fill(j, totalBitStream);
+			thist_bitStreamSizeSLinkPerDTC_[i]->GetXaxis()->SetTitle("SLink index");
+			thist_bitStreamSizeSLinkPerDTC_[i]->GetYaxis()->SetTitle("Total BitStream");
 		}
 	}
 

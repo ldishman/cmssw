@@ -51,16 +51,18 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 		std::unordered_map<uint32_t, unsigned int> detIdToRingNum_;
 		std::unordered_map<uint32_t, TrackerDetToDTCELinkCablingMap::Subdet> detIdToSubDet_;
 		std::unordered_map<uint32_t, unsigned int> detIdToNElinks_;
-		std::map<unsigned int, size_t> bitStreamSizesbyDTC;
+		std::map<unsigned int, size_t> bitStreamSizesbyDTC_;
 		// Declare slinkMap as <dtcId, slinkId> -> <num_times_filled, totalbitStream>
 		std::map<std::pair<int, int>, std::pair<int, int>> slinkMap_;
 
 		// Declare MonitorElement objects (DQM version of histos w/ some metadata)
-		MonitorElement* me_bitStreamSizeChip;
-		MonitorElement* me_bitStreamSizeModule;
-		MonitorElement* me_occupancyELink;
-		MonitorElement* me_bitStreamSizeSLink;
-		MonitorElement* me_bitStreamSizeDTC;
+		MonitorElement* me_bitStreamSizeChip_;
+		MonitorElement* me_bitStreamSizeModule_;
+		MonitorElement* me_occupancyELink_;
+		MonitorElement* me_bitStreamSizeSLink_;
+		MonitorElement* me_bitStreamSizeDTC_;
+
+		//std::vector<MonitorElement*> mes_bitStreamSizePerDTC_;
 
 		// Declare toString helper for Subdet enum object in cabling map class
 		std::string toString(TrackerDetToDTCELinkCablingMap::Subdet subDet) const {
@@ -73,16 +75,16 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 		}
 
 		// Declare some globally used nums and arrays
-		int nDTCs = 36;
-		int nslinksPerDTC = 16;
-		std::vector<int> dtcIds = {11,12,13,14,15,16,17,18,19,21,22,23,24,25,26,27,28,29,31,32,33,34,35,36,37,38,39,41,42,43,44,45,46,47,48,49};
+		int nDTCs_ = 36;
+		int nslinksPerDTC_ = 16;
+		std::vector<int> dtcIds_ = {11,12,13,14,15,16,17,18,19,21,22,23,24,25,26,27,28,29,31,32,33,34,35,36,37,38,39,41,42,43,44,45,46,47,48,49};
 
 		// Declare histogram pointers
-		TH1F* thist_bitStreamSizeChip = nullptr;
-		TH1F* thist_bitStreamSizeModule = nullptr;
-		TH1F* thist_occupancyELink = nullptr;
-		TH1F* thist_bitStreamSizeSLink = nullptr;
-		TH1F* thist_bitStreamSizeDTC = nullptr;
+		TH1F* thist_bitStreamSizeChip_ = nullptr;
+		TH1F* thist_bitStreamSizeModule_ = nullptr;
+		TH1F* thist_occupancyELink_ = nullptr;
+		TH1F* thist_bitStreamSizeSLink_ = nullptr;
+		TH1F* thist_bitStreamSizeDTC_ = nullptr;
 
 		// Declare needed index maps for vector histograms
 		std::unordered_map<unsigned int, unsigned int> dtcIdToIndex_;
@@ -115,37 +117,37 @@ Phase2ITValidateDataRate::Phase2ITValidateDataRate(const edm::ParameterSet& iCon
       	geomToken_(esConsumes<TrackerGeometry, TrackerDigiGeometryRecord, edm::Transition::BeginRun>()), 
       	topoToken_(esConsumes<TrackerTopology, TrackerTopologyRcd, edm::Transition::BeginRun>()) 
       	{
-      		edm::LogInfo("Phase2ITValidateDataRate") << ">>> Construct Phase2ITValidateDataRate ";
+      	edm::LogInfo("Phase2ITValidateDataRate") << ">>> Construct Phase2ITValidateDataRate ";
       	      	
 		// Create simple histogram objects
-      	      	edm::Service<TFileService> fs;
-      	      	thist_bitStreamSizeChip = fs->make<TH1F>("bitStreamSizeChip_direct", "", 2000, 0., 20000.);
-      	      	thist_bitStreamSizeModule = fs->make<TH1F>("bitStreamSizeModule_direct", "", 2000, 0., 20000.);
-      	      	thist_occupancyELink = fs->make<TH1F>("occupancyOverELinks_direct", "", 60, 0., 3.3);
-				thist_bitStreamSizeSLink = fs->make<TH1F>("bitStreamSizeSLinks_direct", "", 300, 0., 120000.);
-				thist_bitStreamSizeDTC = fs->make<TH1F>("thist_bitStreamSizeDTC_direct", "", 100, 0., 800000.);
+      	edm::Service<TFileService> fs;
+      	thist_bitStreamSizeChip_ = fs->make<TH1F>("bitStreamSizeChip_direct", "", 2000, 0., 20000.);
+      	thist_bitStreamSizeModule_ = fs->make<TH1F>("bitStreamSizeModule_direct", "", 2000, 0., 20000.);
+      	thist_occupancyELink_ = fs->make<TH1F>("occupancyOverELinks_direct", "", 60, 0., 3.3);
+		thist_bitStreamSizeSLink_ = fs->make<TH1F>("bitStreamSizeSLinks_direct", "", 300, 0., 120000.);
+		thist_bitStreamSizeDTC_ = fs->make<TH1F>("thist_bitStreamSizeDTC_direct", "", 100, 0., 800000.);
 		
 		// Write setup for DTC Histos
 		int num_dtcs = 36;
-		int dtcIds[num_dtcs];
+		int dtcIds_[num_dtcs];
 		int index = 0;
 
         // Create array for all valid DTC Ids (11-19, 21-29, 31-39, 41-49)
 		for (int i = 0; i <= 3; i ++) {
 			int start = 11 + i*10;
 			for (int j = start; j < start + 9; j++) {
-				dtcIds[index++] = j;
+				dtcIds_[index++] = j;
 			}
 		}
 
 		// Create TH1F for each DTC
-                thist_bitStreamSizePerDTC_.resize(num_dtcs, nullptr);
-				thist_bitStreamSizeSLinkPerDTC_.resize(num_dtcs, nullptr);
-                for (int i = 0; i < num_dtcs; i++) {
-                        thist_bitStreamSizePerDTC_[i] = fs->make<TH1F>(("thist_bitStreamSizePerDTC_" + std::to_string(dtcIds[i])).c_str(), "", 500, 0., 8000.);
-						thist_bitStreamSizeSLinkPerDTC_[i] = fs->make<TH1F>(("thist_bitStreamSizeSLinkPerDTC_" + std::to_string(dtcIds[i])).c_str(), "", nslinksPerDTC, -1, nslinksPerDTC-1);
-                        dtcIdToIndex_[dtcIds[i]] = i;
-                }
+        thist_bitStreamSizePerDTC_.resize(num_dtcs, nullptr);
+		thist_bitStreamSizeSLinkPerDTC_.resize(num_dtcs, nullptr);
+        for (int i = 0; i < num_dtcs; i++) {
+           thist_bitStreamSizePerDTC_[i] = fs->make<TH1F>(("thist_bitStreamSizePerDTC_" + std::to_string(dtcIds_[i])).c_str(), "", 500, 0., 8000.);
+			thist_bitStreamSizeSLinkPerDTC_[i] = fs->make<TH1F>(("thist_bitStreamSizeSLinkPerDTC_" + std::to_string(dtcIds_[i])).c_str(), "", nslinksPerDTC_, -1, nslinksPerDTC_-1);
+            dtcIdToIndex_[dtcIds_[i]] = i;
+        }
 
 		// Write setup for Layer Histos
 		int num_layers = 8;
@@ -332,8 +334,8 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 		// Loop over chips in current module, get bitStreamSize variable, and fill TH1Fs as needed
 		for (const auto& bitStream : detset) {
 			size_t bitStreamSize = bitStream.get_bitstream().size();	// This bitStreamSize is the only variable used to Fill
-			thist_bitStreamSizeChip->Fill(bitStreamSize);
-			me_bitStreamSizeChip->Fill(bitStreamSize);
+			thist_bitStreamSizeChip_->Fill(bitStreamSize);
+			me_bitStreamSizeChip_->Fill(bitStreamSize);
 			thist_bitStreamSizePerDTC_[idx]->Fill(bitStreamSize);
 			thist_bitStreamSizePerSection_[idx_section]->Fill(bitStreamSize);
 			thist_bitStreamSizePerPaperSection_[idx_paperSection]->Fill(bitStreamSize);
@@ -342,8 +344,8 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 			bitStreamSizeModule += bitStreamSize;
 		}
 
-		thist_bitStreamSizeModule->Fill(bitStreamSizeModule);
-		me_bitStreamSizeModule->Fill(bitStreamSizeModule);
+		thist_bitStreamSizeModule_->Fill(bitStreamSizeModule);
+		me_bitStreamSizeModule_->Fill(bitStreamSizeModule);
 
 		// Define some constants for E-Link occupancy
 		double trigger_rate = 750.0e3;	// Hz
@@ -351,15 +353,15 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 
 		for (unsigned int i = 0; i < nElinks; i++) {
 			double occupancy = (static_cast<double>(bitStreamSizeModule) * trigger_rate) / (static_cast<double>(nElinks) * bandwidth);
-			thist_occupancyELink->Fill(occupancy);
-			me_occupancyELink->Fill(occupancy);
+			thist_occupancyELink_->Fill(occupancy);
+			me_occupancyELink_->Fill(occupancy);
 			num_elinks += 1;
 		}
 		
 		// Fill slinkMap in order based on DTC (pseudo-slink-occupancy), and repeat when all slinks full for DTC
 		// Count how many modules have already been assigned to this DTC
 		int assignedSoFar = 0;
-		for (int i = 0; i < nslinksPerDTC; i++) {
+		for (int i = 0; i < nslinksPerDTC_; i++) {
 			auto it = slinkMap_.find({dtcId, i});
 			if (it != slinkMap_.end()) assignedSoFar += it->second.first;
 			// std::cout << "Modules assignedSoFar for DTC " << dtcId << " : " << assignedSoFar << " \n";
@@ -374,7 +376,7 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 		entry.first += 1;
 		entry.second += bitStreamSizeModule;
 		
-		bitStreamSizesbyDTC[dtcId] += bitStreamSizeModule;
+		bitStreamSizesbyDTC_[dtcId] += bitStreamSizeModule;
 
 	} // End module loop
 
@@ -385,20 +387,20 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 	std::cout << "num elinks: " << num_elinks << " \n";
 
 	// Fill TH1F for bitStreamSize across all DTCs
-	for (const auto& [dtcId, totalBitStream] : bitStreamSizesbyDTC) {
+	for (const auto& [dtcId, totalBitStream] : bitStreamSizesbyDTC_) {
 		std::cout << "DtcId: " << dtcId << " and totalBitStream: " << totalBitStream << " \n";
-		thist_bitStreamSizeDTC->Fill(totalBitStream);
-		me_bitStreamSizeDTC->Fill(totalBitStream);
+		thist_bitStreamSizeDTC_->Fill(totalBitStream);
+		me_bitStreamSizeDTC_->Fill(totalBitStream);
 	}
 
 	// Take filled slinkMap with bitStream info and fill 1 histo with totals
-	for (int i = 0; i < nDTCs; i++) {
-		for (int j = 0; j < nslinksPerDTC; j++) {
-			int totalBitStream = slinkMap_[{dtcIds[i], j}].second;
+	for (int i = 0; i < nDTCs_; i++) {
+		for (int j = 0; j < nslinksPerDTC_; j++) {
+			int totalBitStream = slinkMap_[{dtcIds_[i], j}].second;
 			// Fill slink histogram with total bitStreamSize for each slink
-			thist_bitStreamSizeSLink->Fill(totalBitStream);
-			me_bitStreamSizeSLink->Fill(totalBitStream);
-			// std::cout << "DtcId: " << dtcIds[i] << ", slink: " << j << ", totalBitStream: " << totalBitStream << " \n";
+			thist_bitStreamSizeSLink_->Fill(totalBitStream);
+			me_bitStreamSizeSLink_->Fill(totalBitStream);
+			// std::cout << "DtcId: " << dtcIds_[i] << ", slink: " << j << ", totalBitStream: " << totalBitStream << " \n";
 			// Fill "histo" for slink distribution over EACH DTC (36 histos)
 			thist_bitStreamSizeSLinkPerDTC_[i]->Fill(j, totalBitStream);
 			thist_bitStreamSizeSLinkPerDTC_[i]->GetXaxis()->SetTitle("SLink index");
@@ -414,11 +416,11 @@ void Phase2ITValidateDataRate::bookHistograms(DQMStore::IBooker& ibooker, edm::R
 
 	ibooker.setCurrentFolder(top_folder);
 
-	me_bitStreamSizeChip = ibooker.book1D("bitStreamSizeChip_direct", "Bit Stream Size Chip (direct)", 2000, 0., 20000.);
-	me_bitStreamSizeModule = ibooker.book1D("bitStreamSizeModule_direct", "Bit Stream Size Module (direct)", 2000, 0., 20000.);
-	me_occupancyELink = ibooker.book1D("occupancyELink_direct", "Bit Stream Size ELink (direct)", 60, 0., 3.3);
-	me_bitStreamSizeSLink = ibooker.book1D("bitStreamSizeSLink_direct", "Bit Stream Size SLink (direct)", 300, 0., 120000.);
-	me_bitStreamSizeDTC = ibooker.book1D("bitStreamSizeDTC_direct", "Bit Stream Size DTC (direct)", 100, 0., 800000.);
+	me_bitStreamSizeChip_ = ibooker.book1D("bitStreamSizeChip_direct", "Bit Stream Size Chip (direct)", 2000, 0., 20000.);
+	me_bitStreamSizeModule_ = ibooker.book1D("bitStreamSizeModule_direct", "Bit Stream Size Module (direct)", 2000, 0., 20000.);
+	me_occupancyELink_ = ibooker.book1D("occupancyELink_direct", "Bit Stream Size ELink (direct)", 60, 0., 3.3);
+	me_bitStreamSizeSLink_ = ibooker.book1D("bitStreamSizeSLink_direct", "Bit Stream Size SLink (direct)", 300, 0., 120000.);
+	me_bitStreamSizeDTC_ = ibooker.book1D("bitStreamSizeDTC_direct", "Bit Stream Size DTC (direct)", 100, 0., 800000.);
 }
 
 // Function unused for now

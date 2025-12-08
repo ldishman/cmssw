@@ -42,9 +42,14 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 		static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
 	private:
-		// Declare other plugin member / helper functions and data organization variables
+		// Declare other plugin member / helper functions
 		void bookDTCHistos(DQMStore::IBooker& ibooker);
-		void bookLayerHistos(DQMStore::IBooker& ibooker, uint32_t det_it, const std::string& subdir);
+		void bookLayerHistos(DQMStore::IBooker& ibooker);
+		void bookSectionHistos(DQMStore::IBooker& ibooker);
+		void bookPaperSectionHistos(DQMStore::IBooker& ibooker);
+		//void bookLayerHistos(DQMStore::IBooker& ibooker, uint32_t det_it, const std::string& subdir);
+
+		// Declare some data organization maps / vectors
 		std::vector<std::pair<unsigned int, unsigned int>> knownDTCIdsWithIndex_;
 		std::unordered_map<unsigned int, std::vector<uint32_t>> dtcIdToDetIds_;
 		std::unordered_map<uint32_t, unsigned int> detIdToDtcId_;
@@ -53,19 +58,23 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 		std::unordered_map<uint32_t, TrackerDetToDTCELinkCablingMap::Subdet> detIdToSubDet_;
 		std::unordered_map<uint32_t, unsigned int> detIdToNElinks_;
 		std::map<unsigned int, size_t> bitStreamSizesbyDTC_;
-		// Declare slinkMap as <dtcId, slinkId> -> <num_times_filled, totalbitStream>
-		std::map<std::pair<int, int>, std::pair<int, int>> slinkMap_;
+		std::map<std::pair<int, int>, std::pair<int, int>> slinkMap_;	// Declare slinkMap as <dtcId, slinkId> -> <num_times_filled, totalbitStream>
 
-		// Declare MonitorElement objects (DQM version of histos w/ some metadata)
+		// Declare 'simple' MonitorElement objects (DQM version of histos w/ some metadata)
 		MonitorElement* me_bitStreamSizeChip_;
 		MonitorElement* me_bitStreamSizeModule_;
 		MonitorElement* me_occupancyELink_;
 		MonitorElement* me_bitStreamSizeSLink_;
 		MonitorElement* me_bitStreamSizeDTC_;
 
+		// Declare 'complex' vector MonitorElement objects
 		std::vector<MonitorElement*> mes_bitStreamSizePerDTC_;
+		std::vector<MonitorElement*> mes_bitStreamSizeSLinkPerDTC_;
+		std::vector<MonitorElement*> mes_bitStreamSizePerLayer_;
+		std::vector<MonitorElement*> mes_bitStreamSizePerSection_;
+		std::vector<MonitorElement*> mes_bitStreamSizePerPaperSection_;
 
-		// Declare toString helper for Subdet enum object in cabling map class
+		// Define toString helper for Subdet enum object in cabling map class
 		std::string toString(TrackerDetToDTCELinkCablingMap::Subdet subDet) const {
 			switch (subDet) {
 				case TrackerDetToDTCELinkCablingMap::PXB:    return "PXB";
@@ -75,10 +84,21 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 			}
 		}
 
-		// Declare some globally used nums and arrays
+		// Declare some geometry-related, globally used nums and arrays
 		int nDTCs_ = 36;
-		int nslinksPerDTC_ = 16;
 		std::vector<int> dtcIds_ = {11,12,13,14,15,16,17,18,19,21,22,23,24,25,26,27,28,29,31,32,33,34,35,36,37,38,39,41,42,43,44,45,46,47,48,49};
+		int nslinksPerDTC_ = 16;
+		int nLayers_ = 8;
+		std::vector<int> layerNums_ = {1,2,3,4,5,6,7,8};
+		int nRings_ = 5;
+		std::vector<int> ringNums_ = {1, 2, 3, 4, 5};
+		int nSubDets_ = 3;
+		std::vector<int> subDetIdxs_ = {0, 1, 2};
+		int nSections_ = nSubDets_ * nRings_ * nLayers_;
+		int nPaperTBPX_ = 4;		// layers
+		int nPaperTFPX_ = 4;		// rings
+		int nPaperTEPX_ = 5;		// rings
+		int nPaperSections_ = nPaperTBPX_ + nPaperTFPX_ + nPaperTEPX_;     // just counting above defined sections from 'the paper'
 
 		// Declare histogram pointers
 		TH1F* thist_bitStreamSizeChip_ = nullptr;
@@ -87,7 +107,7 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 		TH1F* thist_bitStreamSizeSLink_ = nullptr;
 		TH1F* thist_bitStreamSizeDTC_ = nullptr;
 
-		// Declare needed index maps for vector histograms
+		// Declare needed index maps for vectors of MEs / histos
 		std::unordered_map<unsigned int, unsigned int> dtcIdToIndex_;
 		std::unordered_map<unsigned int, unsigned int> layerNumToIndex_;
 		std::map<std::tuple<int, int, int>, unsigned int> sectionToIndex_;
@@ -163,7 +183,7 @@ Phase2ITValidateDataRate::Phase2ITValidateDataRate(const edm::ParameterSet& iCon
 		thist_bitStreamSizePerLayer_.resize(num_layers, nullptr);
 		for (int i = 0; i < num_layers; i++) {
 			thist_bitStreamSizePerLayer_[i] = fs->make<TH1F>(("thist_bitStreamSizePerLayer_" + std::to_string(layerNums[i])).c_str(), "", 500, 0., 10000.);
-			layerNumToIndex_[layerNums[i]] = i;
+			//layerNumToIndex_[layerNums[i]] = i;
 		}
 
 		// Write remaining setup for Section Histos (overall needs subDet, layerNum, ringNum)
@@ -285,6 +305,46 @@ void Phase2ITValidateDataRate::dqmBeginRun(const edm::Run& iRun, const edm::Even
         dtcIdToIndex_[dtcIds_[i]] = i;
     }
 
+	// Build layerNumToIndex_ map for histogram access / filling
+	layerNumToIndex_.clear();
+	for (int i = 0; i < nLayers_; i++) {
+		layerNumToIndex_[layerNums_[i]] = i;
+	}
+
+	// Build sectionToIndex_ map for histogram access / filling
+	sectionToIndex_.clear();
+	int count = 0;
+	for (int i = 0; i < nSubDets_; i++) {
+		for (int j = 0; j < nLayers_; j++) {
+			for (int k = 0; k < nRings_; k++) {
+				sectionToIndex_[{subDetIdxs_[i], layerNums_[j], ringNums_[k]}] = count;
+				count++;
+			}
+		}
+	}
+
+	// Build paperSectionToIndex_ for histogram access / filling (w/ 3 loops below)
+	paperSectionToIndex_.clear();
+	int counter = 0;
+
+	// For each paper section in TBPX (L1-L4)
+	for (int i = 0; i < nPaperTBPX_; i++) {
+		paperSectionToIndex_[{TrackerDetToDTCELinkCablingMap::PXB, layerNums_[i]}] = counter;
+		counter++;
+	}
+
+	// For each paper section in TFPX (R1-R4)
+	for (int i = 0; i < nPaperTFPX_; i++) {
+		paperSectionToIndex_[{TrackerDetToDTCELinkCablingMap::FPIX_1, ringNums_[i]}] = counter;
+		counter++;
+	}
+	
+	// For each paper section in TEPX (R1-R5)
+	for (int i = 0; i < nPaperTEPX_; i++) {
+		paperSectionToIndex_[{TrackerDetToDTCELinkCablingMap::FPIX_2, ringNums_[i]}] = counter;
+		counter++;
+	}
+
 }
 
 void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
@@ -346,8 +406,11 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 			thist_bitStreamSizePerDTC_[idx]->Fill(bitStreamSize);
 			mes_bitStreamSizePerDTC_[idx]->Fill(bitStreamSize);
 			thist_bitStreamSizePerSection_[idx_section]->Fill(bitStreamSize);
+			mes_bitStreamSizePerSection_[idx_section]->Fill(bitStreamSize);
 			thist_bitStreamSizePerPaperSection_[idx_paperSection]->Fill(bitStreamSize);
+			mes_bitStreamSizePerPaperSection_[idx_paperSection]->Fill(bitStreamSize);
 			thist_bitStreamSizePerLayer_[layerIdx]->Fill(bitStreamSize);
+			mes_bitStreamSizePerLayer_[layerIdx]->Fill(bitStreamSize);
 
 			bitStreamSizeModule += bitStreamSize;
 		}
@@ -413,6 +476,7 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 			thist_bitStreamSizeSLinkPerDTC_[i]->Fill(j, totalBitStream);
 			thist_bitStreamSizeSLinkPerDTC_[i]->GetXaxis()->SetTitle("SLink index");
 			thist_bitStreamSizeSLinkPerDTC_[i]->GetYaxis()->SetTitle("Total BitStream");
+			mes_bitStreamSizeSLinkPerDTC_[i]->Fill(j, totalBitStream);
 		}
 	}
 
@@ -431,25 +495,82 @@ void Phase2ITValidateDataRate::bookHistograms(DQMStore::IBooker& ibooker, edm::R
 	me_bitStreamSizeDTC_ = ibooker.book1D("bitStreamSizeDTC_direct", "Bit Stream Size DTC (direct)", 100, 0., 800000.);
 
 	bookDTCHistos(ibooker);
+	bookLayerHistos(ibooker);
+	bookSectionHistos(ibooker);
+	bookPaperSectionHistos(ibooker);
 }
 
 void Phase2ITValidateDataRate::bookDTCHistos(DQMStore::IBooker& ibooker) {
 	mes_bitStreamSizePerDTC_.resize(nDTCs_, nullptr);
+	mes_bitStreamSizeSLinkPerDTC_.resize(nDTCs_, nullptr);
 
+	// Create DQM Histo(s) for each DTC
     for (int i = 0; i < nDTCs_; i++) {
         mes_bitStreamSizePerDTC_[i] = ibooker.book1D(("bitStreamSizePerDTC_" + std::to_string(dtcIds_[i])).c_str(), "", 500, 0., 8000.);
+		mes_bitStreamSizeSLinkPerDTC_[i] = ibooker.book1D(("bitStreamSizeSLinkPerDTC_" + std::to_string(dtcIds_[i])).c_str(), "", nslinksPerDTC_, -1, nslinksPerDTC_-1);
+		mes_bitStreamSizeSLinkPerDTC_[i]->getTH1()->GetXaxis()->SetTitle("SLink index");
+		mes_bitStreamSizeSLinkPerDTC_[i]->getTH1()->GetYaxis()->SetTitle("Total BitStream");
     }
 }
 
-// Function unused for now
-void Phase2ITValidateDataRate::bookLayerHistos(DQMStore::IBooker& ibooker, uint32_t det_id, const std::string& subdir) {
-	std::string folderName = phase2tkutil::getITHistoId(det_id, tTopo_);
+void Phase2ITValidateDataRate::bookLayerHistos(DQMStore::IBooker& ibooker) {
+	mes_bitStreamSizePerLayer_.resize(nLayers_, nullptr);
 
-	if (folderName.empty()) {
-		edm::LogWarning("Phase2ITValidateDataRate") << ">>>> Invalid histo_id ";
-		return;
+	// Create DQM Histo(s) for each Layer
+	for (int i = 0; i < nLayers_; i++) {
+		mes_bitStreamSizePerLayer_[i] = ibooker.book1D(("bitStreamSizePerLayer_" + std::to_string(layerNums_[i])).c_str(), "", 500, 0., 10000.);
 	}
 }
+
+void Phase2ITValidateDataRate::bookSectionHistos(DQMStore::IBooker& ibooker) {
+	mes_bitStreamSizePerSection_.resize(nSections_, nullptr);
+	
+	int count = 0;
+	// Create DQM Histo(s) for each section (subdet -> layer -> ring)
+	for (int i = 0; i < nSubDets_; i++) {
+		for (int j = 0; j < nLayers_; j++) {
+			for (int k = 0; k < nRings_; k++) {
+				mes_bitStreamSizePerSection_[count] = ibooker.book1D(("bitStreamSizePerSection_" + toString(static_cast<TrackerDetToDTCELinkCablingMap::Subdet>(subDetIdxs_[i])) + "_" + std::to_string(layerNums_[j]) + "_" + std::to_string(ringNums_[k])).c_str(), "", 500, 0., 10000.);
+				count++;
+			}
+		}
+	}
+}
+
+void Phase2ITValidateDataRate::bookPaperSectionHistos(DQMStore::IBooker& ibooker) {
+	// Resize DQM Histo(s) paper sections vector for ALL of below loops
+	mes_bitStreamSizePerPaperSection_.resize(nPaperSections_, nullptr);
+
+	int count = 0;
+
+	// Create DQM Histo(s) for each paper section in TBPX (L1-L4)
+	for (int i = 0; i < nPaperTBPX_; i++) {
+		mes_bitStreamSizePerPaperSection_[count] = ibooker.book1D(("bitStreamSizePerPaperSection_TBPX_L" + std::to_string(layerNums_[i])).c_str(), "", 500, 0., 10000.);
+		count++;
+	}
+	
+	// Create DQM Histo(s) for each paper section in TFPX (R1-R4)
+	for (int i = 0; i < nPaperTFPX_; i++) {
+		mes_bitStreamSizePerPaperSection_[count] = ibooker.book1D(("bitStreamSizePerPaperSection_TFPX_R" + std::to_string(ringNums_[i])).c_str(), "", 500, 0., 10000.);
+		count++;
+	}
+	
+	// Create DQM Histo(s) for each paper section in TEPX (R1-R5)
+	for (int i = 0; i < nPaperTEPX_; i++) {
+		mes_bitStreamSizePerPaperSection_[count] = ibooker.book1D(("bitStreamSizePerPaperSection_TEPX_R" + std::to_string(ringNums_[i])).c_str(), "", 500, 0., 10000.);
+		count++;
+	}
+}
+
+// Function unused for now
+//void Phase2ITValidateDataRate::bookLayerHistos(DQMStore::IBooker& ibooker, uint32_t det_id, const std::string& subdir) {
+//	std::string folderName = phase2tkutil::getITHistoId(det_id, tTopo_);
+//
+//	if (folderName.empty()) {
+//		edm::LogWarning("Phase2ITValidateDataRate") << ">>>> Invalid histo_id ";
+//		return;
+//	}
+//}
 
 void Phase2ITValidateDataRate::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
 	edm::ParameterSetDescription desc;

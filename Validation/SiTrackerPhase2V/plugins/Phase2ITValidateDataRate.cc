@@ -335,17 +335,14 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 	edm::Handle<edm::DetSetVector<Phase2ITChipBitStream>> handle;	// handle ~= data
 	iEvent.getByToken(ITChipBitStreamToken_, handle);	// retrieve bitstream data
 
-	// Define (successfully matched) module counter for sanity check
-	int nModules = 0;
-
-	// Count total number of elinks (as in, add one for each elink per module)
-	int num_elinks = 0;
+	// Define some sanity check counters
+	int num_modules = 0;		// (successfully matched) modules
+	int num_elinks = 0;		// total number of elinks (as in, add one for each elink per module)
 
 	// Loop over modules in handle
 	for (const auto& detset : *handle) {
 		size_t bitStreamSizeModule = 0.;
 		uint32_t det_id = detset.id;
-		//std::cout << "det_id = " << det_id << "\n";
 
 		// Check that the handle's det_id exists as a detId in the detIdToDtcId_ map
 		if (detIdToDtcId_.find(det_id) == detIdToDtcId_.end()) {
@@ -353,116 +350,116 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 			continue;
 		}
 
-		//std::cout << "det_id: " << det_id << " \n";
+		// Find geometric / location quantities after ensuring det_id is valid
+		// Each det_id has: dtcId, layerNum, ringNum, subDet, nElinks
 		unsigned int dtcId = detIdToDtcId_.at(det_id);
-		//std::cout << "dtcId: " << dtcId << " \n";
-		unsigned int idx = dtcIdToIndex_.at(dtcId);
 		unsigned int layerNum = detIdToLayerNum_.at(det_id);
-		//std::cout << "layerNum: " << layerNum << " \n";
 		unsigned int ringNum = detIdToRingNum_.at(det_id);
-		//std::cout << "ringNum: " << ringNum << " \n";
-		TrackerDetToDTCELinkCablingMap::Subdet subDet = detIdToSubDet_.at(det_id);
-		//std::cout << "subDet : " << subDet << "\n";
-		//std::cout << "subDet label : " << toString(subDet) << "\n";
+		TrackerDetToDTCELinkCablingMap::Subdet subDet = detIdToSubDet_.at(det_id);		// note: subDet != toString(subDet)
 		unsigned int nElinks = detIdToNElinks_.at(det_id);
-		//std::cout << "nElinks: " << nElinks << " \n";
 
+		// Find indices corresponding to geometric / location quantities
+		unsigned int dtcIdx = dtcIdToIndex_.at(dtcId);
 		unsigned int layerIdx = layerNumToIndex_.at(layerNum);
-		auto idx_section = sectionToIndex_.at({subDet, layerNum, ringNum});
-		auto idx_paperSection = 0;
-		
+		auto sectionIdx = sectionToIndex_.at({subDet, layerNum, ringNum});
+		auto paperSectionIdx = 0;
 
-		// This is not robust, assumes you know the map's structure
+		// Find indices corresponding to subDet (tricky, used enum type in cabling map)
 		if (toString(subDet)=="PXB" && layerNum<5) {
-			idx_paperSection = paperSectionToIndex_.at({subDet, layerNum});
+			paperSectionIdx = paperSectionToIndex_.at({subDet, layerNum});
 		}
 		else if ((toString(subDet)=="FPIX_1" && ringNum<5) || (toString(subDet)=="FPIX_2" && ringNum<6)) {
-			idx_paperSection = paperSectionToIndex_.at({subDet, ringNum});
+			paperSectionIdx = paperSectionToIndex_.at({subDet, ringNum});
 		}
-
-		nModules += 1;
 		
-		// Loop over chips in current module, get bitStreamSize variable, and fill TH1Fs as needed
+		// Loop over chips in current module
 		for (const auto& bitStream : detset) {
-			size_t bitStreamSize = bitStream.get_bitstream().size();	// This bitStreamSize is the only variable used to Fill
+			size_t bitStreamSize = bitStream.get_bitstream().size();	// bitStreamSize is always at chip level by default!
+
+			// Fill TFileService Histos at each-chip level
 			thist_bitStreamSizeChip_->Fill(bitStreamSize);
-			me_bitStreamSizeChip_->Fill(bitStreamSize);
-			thist_bitStreamSizePerDTC_[idx]->Fill(bitStreamSize);
-			mes_bitStreamSizePerDTC_[idx]->Fill(bitStreamSize);
-			thist_bitStreamSizePerSection_[idx_section]->Fill(bitStreamSize);
-			mes_bitStreamSizePerSection_[idx_section]->Fill(bitStreamSize);
-			thist_bitStreamSizePerPaperSection_[idx_paperSection]->Fill(bitStreamSize);
-			mes_bitStreamSizePerPaperSection_[idx_paperSection]->Fill(bitStreamSize);
+			thist_bitStreamSizePerDTC_[dtcIdx]->Fill(bitStreamSize);
+			thist_bitStreamSizePerSection_[sectionIdx]->Fill(bitStreamSize);
+			thist_bitStreamSizePerPaperSection_[paperSectionIdx]->Fill(bitStreamSize);
 			thist_bitStreamSizePerLayer_[layerIdx]->Fill(bitStreamSize);
+
+			// Fill DQM Histos at each-chip level
+			me_bitStreamSizeChip_->Fill(bitStreamSize);
+			mes_bitStreamSizePerDTC_[dtcIdx]->Fill(bitStreamSize);
+			mes_bitStreamSizePerSection_[sectionIdx]->Fill(bitStreamSize);
+			mes_bitStreamSizePerPaperSection_[paperSectionIdx]->Fill(bitStreamSize);
 			mes_bitStreamSizePerLayer_[layerIdx]->Fill(bitStreamSize);
 
 			bitStreamSizeModule += bitStreamSize;
-		}
+		} // End loop over chips in current module
 
+		// Fill histos at each-module level
 		thist_bitStreamSizeModule_->Fill(bitStreamSizeModule);
 		me_bitStreamSizeModule_->Fill(bitStreamSizeModule);
 
-		// Define some constants for E-Link occupancy
+		// Define E-Link occupancy w/ proper constants and fill histos
 		double trigger_rate = 750.0e3;	// Hz
 		double bandwidth = 1.28e9;	// bits/s
-
 		for (unsigned int i = 0; i < nElinks; i++) {
 			double occupancy = (static_cast<double>(bitStreamSizeModule) * trigger_rate) / (static_cast<double>(nElinks) * bandwidth);
 			thist_occupancyELink_->Fill(occupancy);
 			me_occupancyELink_->Fill(occupancy);
-			num_elinks += 1;
+			num_elinks += 1;		// Add to sanity-check counter
 		}
 		
-		// Fill slinkMap in order based on DTC (pseudo-slink-occupancy), and repeat when all slinks full for DTC
-		// Count how many modules have already been assigned to this DTC
+		// NEXT: Fill slinkMap in order based on DTC (pseudo-slink-occupancy), and repeat when all slinks full for DTC
+		// Recall: slinkMap looks like <dtcId, slinkId> -> <num_times_filled, totalbitStream>
+
+		// First: Count how many modules have already been assigned to this DTC, hold info in small scope variable (assignedSoFar)
 		int assignedSoFar = 0;
 		for (int i = 0; i < nslinksPerDTC_; i++) {
 			auto it = slinkMap_.find({dtcId, i});
-			if (it != slinkMap_.end()) assignedSoFar += it->second.first;
+			if (it != slinkMap_.end()) assignedSoFar += it->second.first;	// it->second.first ~= num_times_filled (by module)
 			// std::cout << "Modules assignedSoFar for DTC " << dtcId << " : " << assignedSoFar << " \n";
 		}
-		
-		// Pick the slink in order
+
+		// Second: Pick the slink in order (chooses slot filled least-recently)
 		int slinkId = assignedSoFar % 16;
 		// std::cout << "SLinkId for module " << det_id << " : " << slinkId << " \n";
 
-		// Update the (actual) map entry (via [])
+		// Third: Update the (actual) map entry (via []) after choosing the right slot
 		auto &entry = slinkMap_[{dtcId, slinkId}];
-		entry.first += 1;
-		entry.second += bitStreamSizeModule;
-		
+		entry.first += 1;	// add 1 to num_times_filled (by module)
+		entry.second += bitStreamSizeModule;	// add this module's bitstream to the totalBitStream for this {dtcId, slinkId} pair
+
+		// Fill map with totalBitStream per DTC for later histo
 		bitStreamSizesbyDTC_[dtcId] += bitStreamSizeModule;
 
-	} // End module loop
+		num_modules += 1;		// Add to sanity-check counter
 
-	// Check (successfully matched) module counter
-	std::cout << "nModules: " << nModules << " \n";
-	
-	// Check total number of elinks (adding 1 for every elink attached to each module)
-	std::cout << "num elinks: " << num_elinks << " \n";
+	} // End loop over modules in handle
 
-	// Fill TH1F for bitStreamSize across all DTCs
+	// Fill histo for bitStreamSize distributed across each DTC using map made above
 	for (const auto& [dtcId, totalBitStream] : bitStreamSizesbyDTC_) {
 		std::cout << "DtcId: " << dtcId << " and totalBitStream: " << totalBitStream << " \n";
 		thist_bitStreamSizeDTC_->Fill(totalBitStream);
 		me_bitStreamSizeDTC_->Fill(totalBitStream);
 	}
 
-	// Take filled slinkMap with bitStream info and fill 1 histo with totals
+	// Loop over each slink in each DTC
 	for (int i = 0; i < nDTCs_; i++) {
 		for (int j = 0; j < nslinksPerDTC_; j++) {
-			int totalBitStream = slinkMap_[{dtcIds_[i], j}].second;
-			// Fill slink histogram with total bitStreamSize for each slink
+			int totalBitStream = slinkMap_[{dtcIds_[i], j}].second;		// this is totalBitStream per current slink
+
+			// Fill 1 histo with total bitStreamSize for each slink
 			thist_bitStreamSizeSLink_->Fill(totalBitStream);
 			me_bitStreamSizeSLink_->Fill(totalBitStream);
 			// std::cout << "DtcId: " << dtcIds_[i] << ", slink: " << j << ", totalBitStream: " << totalBitStream << " \n";
-			// Fill "histo" for slink distribution over EACH DTC (36 histos)
+
+			// Fill 36 "histos" for slink distribution over EACH DTC
 			thist_bitStreamSizeSLinkPerDTC_[i]->Fill(j, totalBitStream);
-			thist_bitStreamSizeSLinkPerDTC_[i]->GetXaxis()->SetTitle("SLink index");
-			thist_bitStreamSizeSLinkPerDTC_[i]->GetYaxis()->SetTitle("Total BitStream");
 			mes_bitStreamSizeSLinkPerDTC_[i]->Fill(j, totalBitStream);
 		}
 	}
+
+	// Check counters
+	std::cout << "num_modules: " << num_modules << " \n";
+	std::cout << "num_elinks: " << num_elinks << " \n";
 
 }
 

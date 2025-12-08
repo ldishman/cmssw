@@ -43,6 +43,7 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 
 	private:
 		// Declare other plugin member / helper functions and data organization variables
+		void bookDTCHistos(DQMStore::IBooker& ibooker);
 		void bookLayerHistos(DQMStore::IBooker& ibooker, uint32_t det_it, const std::string& subdir);
 		std::vector<std::pair<unsigned int, unsigned int>> knownDTCIdsWithIndex_;
 		std::unordered_map<unsigned int, std::vector<uint32_t>> dtcIdToDetIds_;
@@ -62,7 +63,7 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 		MonitorElement* me_bitStreamSizeSLink_;
 		MonitorElement* me_bitStreamSizeDTC_;
 
-		//std::vector<MonitorElement*> mes_bitStreamSizePerDTC_;
+		std::vector<MonitorElement*> mes_bitStreamSizePerDTC_;
 
 		// Declare toString helper for Subdet enum object in cabling map class
 		std::string toString(TrackerDetToDTCELinkCablingMap::Subdet subDet) const {
@@ -144,9 +145,9 @@ Phase2ITValidateDataRate::Phase2ITValidateDataRate(const edm::ParameterSet& iCon
         thist_bitStreamSizePerDTC_.resize(num_dtcs, nullptr);
 		thist_bitStreamSizeSLinkPerDTC_.resize(num_dtcs, nullptr);
         for (int i = 0; i < num_dtcs; i++) {
-           thist_bitStreamSizePerDTC_[i] = fs->make<TH1F>(("thist_bitStreamSizePerDTC_" + std::to_string(dtcIds_[i])).c_str(), "", 500, 0., 8000.);
+        	thist_bitStreamSizePerDTC_[i] = fs->make<TH1F>(("thist_bitStreamSizePerDTC_" + std::to_string(dtcIds_[i])).c_str(), "", 500, 0., 8000.);
 			thist_bitStreamSizeSLinkPerDTC_[i] = fs->make<TH1F>(("thist_bitStreamSizeSLinkPerDTC_" + std::to_string(dtcIds_[i])).c_str(), "", nslinksPerDTC_, -1, nslinksPerDTC_-1);
-            dtcIdToIndex_[dtcIds_[i]] = i;
+            //dtcIdToIndex_[dtcIds_[i]] = i;
         }
 
 		// Write setup for Layer Histos
@@ -278,6 +279,12 @@ void Phase2ITValidateDataRate::dqmBeginRun(const edm::Run& iRun, const edm::Even
 	// Clear map for <dtc,slink> -> <num_times_filled,totalBitStream for each 36*16 = 576 slinks (36 DTCs, 16 slinks per DTC)
 	slinkMap_.clear();
 
+	// Build dtcIdToIndex map for histogram access / filling
+	dtcIdToIndex_.clear();
+	for (int i = 0; i < nDTCs_; i++) {
+        dtcIdToIndex_[dtcIds_[i]] = i;
+    }
+
 }
 
 void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
@@ -337,6 +344,7 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 			thist_bitStreamSizeChip_->Fill(bitStreamSize);
 			me_bitStreamSizeChip_->Fill(bitStreamSize);
 			thist_bitStreamSizePerDTC_[idx]->Fill(bitStreamSize);
+			mes_bitStreamSizePerDTC_[idx]->Fill(bitStreamSize);
 			thist_bitStreamSizePerSection_[idx_section]->Fill(bitStreamSize);
 			thist_bitStreamSizePerPaperSection_[idx_paperSection]->Fill(bitStreamSize);
 			thist_bitStreamSizePerLayer_[layerIdx]->Fill(bitStreamSize);
@@ -421,6 +429,16 @@ void Phase2ITValidateDataRate::bookHistograms(DQMStore::IBooker& ibooker, edm::R
 	me_occupancyELink_ = ibooker.book1D("occupancyELink_direct", "Bit Stream Size ELink (direct)", 60, 0., 3.3);
 	me_bitStreamSizeSLink_ = ibooker.book1D("bitStreamSizeSLink_direct", "Bit Stream Size SLink (direct)", 300, 0., 120000.);
 	me_bitStreamSizeDTC_ = ibooker.book1D("bitStreamSizeDTC_direct", "Bit Stream Size DTC (direct)", 100, 0., 800000.);
+
+	bookDTCHistos(ibooker);
+}
+
+void Phase2ITValidateDataRate::bookDTCHistos(DQMStore::IBooker& ibooker) {
+	mes_bitStreamSizePerDTC_.resize(nDTCs_, nullptr);
+
+    for (int i = 0; i < nDTCs_; i++) {
+        mes_bitStreamSizePerDTC_[i] = ibooker.book1D(("bitStreamSizePerDTC_" + std::to_string(dtcIds_[i])).c_str(), "", 500, 0., 8000.);
+    }
 }
 
 // Function unused for now

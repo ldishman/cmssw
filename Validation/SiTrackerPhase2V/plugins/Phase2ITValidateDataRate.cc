@@ -100,20 +100,20 @@ class Phase2ITValidateDataRate : public DQMEDAnalyzer {
 		int nPaperTEPX_ = 5;		// rings
 		int nPaperSections_ = nPaperTBPX_ + nPaperTFPX_ + nPaperTEPX_;     // just counting above defined sections from 'the paper'
 
-		// Declare histogram pointers
-		TH1F* thist_bitStreamSizeChip_ = nullptr;
-		TH1F* thist_bitStreamSizeModule_ = nullptr;
-		TH1F* thist_occupancyELink_ = nullptr;
-		TH1F* thist_bitStreamSizeSLink_ = nullptr;
-		TH1F* thist_bitStreamSizeDTC_ = nullptr;
-
 		// Declare needed index maps for vectors of MEs / histos
 		std::unordered_map<unsigned int, unsigned int> dtcIdToIndex_;
 		std::unordered_map<unsigned int, unsigned int> layerNumToIndex_;
 		std::map<std::tuple<int, int, int>, unsigned int> sectionToIndex_;
 		std::map<std::tuple<int, int>, unsigned int> paperSectionToIndex_;
 
-		// Declare TH1F object vectors
+		// Declare THIST histogram pointers
+		TH1F* thist_bitStreamSizeChip_ = nullptr;
+		TH1F* thist_bitStreamSizeModule_ = nullptr;
+		TH1F* thist_occupancyELink_ = nullptr;
+		TH1F* thist_bitStreamSizeSLink_ = nullptr;
+		TH1F* thist_bitStreamSizeDTC_ = nullptr;
+
+		// Declare THIST TH1F object vectors
 		std::vector<TH1F*> thist_bitStreamSizePerDTC_;
 		std::vector<TH1F*> thist_bitStreamSizeSLinkPerDTC_;
 		std::vector<TH1F*> thist_bitStreamSizePerLayer_;
@@ -268,30 +268,19 @@ void Phase2ITValidateDataRate::dqmBeginRun(const edm::Run& iRun, const edm::Even
 		}
 	}
 
-	// Build detIdToLayerNum map (using detIdToDtcId map for detIds, but getting layerNums from cabling map)
+	// Build several maps by using detIdToDtcId map for detIds, but getting individual nums from cabling map
+	// detIdToLayerNum_, detIdToRingNum_, detIdToSubDet_, detIdToNElinks_
 	detIdToLayerNum_.clear();
+	detIdToRingNum_.clear();
+	detIdToSubDet_.clear();
+	detIdToNElinks_.clear();
 	for (const auto& [detId, dtcId] : detIdToDtcId_) {
 		detIdToLayerNum_[detId] = cablingMap_->detIdToLayerNum(detId);
 		//std::cout << "cabling map detIdToLayerNum_[detId] = " << detIdToLayerNum_[detId] << " for detId " << detId << "\n";
-	}
-
-	// Build detIdToRingNum map (using detIdToDtcId map for detIds, but getting ringNums from cabling map)
-	detIdToRingNum_.clear();
-	for (const auto& [detId, dtcId] : detIdToDtcId_) {
 		detIdToRingNum_[detId] = cablingMap_->detIdToRingNum(detId);
 		//std::cout << "cabling map detIdToRingNum_[detId] = " << detIdToRingNum_[detId] << " for detId " << detId << "\n";
-	}
-
-	// Build detIdToSubDet map (using detIdToDtcId map for detIds, but getting subDets from cabling map)
-	detIdToSubDet_.clear();
-	for (const auto& [detId, dtcId] : detIdToDtcId_) {
 		detIdToSubDet_[detId] = cablingMap_->detIdToSubDet(detId);
 		//std::cout << "cabling map detIdToSubDet_[detId] = " << detIdToSubDet_[detId] << " with toString val: " << toString(detIdToSubDet_[detId]) << " for detId " << detId << "\n";	// Note this prints 0, 1, or 2 for value, then PXB, FPIX_1, or FPIX_2 for toString(value)
-	}
-
-	// Build detIdToNElinks map (using detIdToDtcId map for detIds, but getting nElinks from cabling map)
-	detIdToNElinks_.clear();
-	for (const auto& [detId, dtcId] : detIdToDtcId_) {
 		detIdToNElinks_[detId] = cablingMap_->detIdToNElinks(detId);
 		//std::cout << "cabling map detIdToNElinks_[detId] = " << detIdToNElinks_[detId] << " for detId " << detId << "\n";
 	}
@@ -327,20 +316,15 @@ void Phase2ITValidateDataRate::dqmBeginRun(const edm::Run& iRun, const edm::Even
 	paperSectionToIndex_.clear();
 	int counter = 0;
 
-	// For each paper section in TBPX (L1-L4)
-	for (int i = 0; i < nPaperTBPX_; i++) {
+	for (int i = 0; i < nPaperTBPX_; i++) {		// For each paper section in TBPX (L1-L4)
 		paperSectionToIndex_[{TrackerDetToDTCELinkCablingMap::PXB, layerNums_[i]}] = counter;
 		counter++;
 	}
-
-	// For each paper section in TFPX (R1-R4)
-	for (int i = 0; i < nPaperTFPX_; i++) {
+	for (int i = 0; i < nPaperTFPX_; i++) {		// For each paper section in TFPX (R1-R4)
 		paperSectionToIndex_[{TrackerDetToDTCELinkCablingMap::FPIX_1, ringNums_[i]}] = counter;
 		counter++;
 	}
-	
-	// For each paper section in TEPX (R1-R5)
-	for (int i = 0; i < nPaperTEPX_; i++) {
+	for (int i = 0; i < nPaperTEPX_; i++) {		// For each paper section in TEPX (R1-R5)
 		paperSectionToIndex_[{TrackerDetToDTCELinkCablingMap::FPIX_2, ringNums_[i]}] = counter;
 		counter++;
 	}

@@ -343,6 +343,30 @@ void Phase2ITValidateDataRate::analyze(const edm::Event& iEvent, const edm::Even
 	for (const auto& detset : *handle) {
 		size_t bitStreamSizeModule = 0.;
 		uint32_t det_id = detset.id;
+		//std::cout << "Found det_id: " << detset.id << ", module # : " << num_modules << "\n";
+
+		for (const auto& bitStream : detset) {
+    		if (num_modules == 30) {
+    			auto bits = bitStream.get_bitstream();
+        		size_t bitStreamSize = bits.size();
+				std::cout << "bitstream size: " << bitStreamSize << "\n";
+        		std::cout << "Module " << num_modules << " bitstream: \n";
+
+        		size_t bitsPerLine = 32;
+        		size_t maxLines = 20;
+
+        		for (size_t line = 0; line < maxLines; ++line) {
+            		size_t start = line * bitsPerLine;
+            		if (start >= bitStreamSize) break;
+            		for (size_t i = 0; i < bitsPerLine && (start + i) < bitStreamSize; ++i) {
+                		std::cout << bits[start + i];
+					}
+            		std::cout << "\n";
+        		}
+
+        		break; // <--- exit the loop after printing once
+    		}
+		}
 
 		// Check that the handle's det_id exists as a detId in the detIdToDtcId_ map
 		if (detIdToDtcId_.find(det_id) == detIdToDtcId_.end()) {

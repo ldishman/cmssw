@@ -33,6 +33,7 @@ Implementation:
 #include "CondFormats/Common/interface/Time.h"
 #include "CondFormats/SiPhase2TrackerObjects/interface/TrackerDetToDTCELinkCablingMap.h"
 #include "CondFormats/SiPhase2TrackerObjects/interface/DTCELinkId.h"
+#include "CondFormats/SiPhase2TrackerObjects/interface/TrackerDetToDTCELinkCablingMap.h"
 #include "CondFormats/DataRecord/interface/TrackerDetToDTCELinkCablingMapRcd.h"
 
 class DTCCablingMapTestProducer : public edm::one::EDAnalyzer<> {
@@ -70,10 +71,11 @@ void DTCCablingMapTestProducer::beginJob() {
   using namespace edm;
   using namespace std;
 
-  pCablingMap_->insert(DTCELinkId(101u, 1u, 2u), 11111111);
-  pCablingMap_->insert(DTCELinkId(102u, 2u, 2u), 22222222);
-  pCablingMap_->insert(DTCELinkId(103u, 3u, 3u), 33333333);
-  pCablingMap_->insert(DTCELinkId(104u, 4u, 4u), 44444444);
+  // The zeros here are not necessarily ideal for layer number, ring number, num elinks checks
+  pCablingMap_->insert(DTCELinkId(101u, 1u, 2u), 11111111, 0, 0, TrackerDetToDTCELinkCablingMap::PXB, 0);
+  pCablingMap_->insert(DTCELinkId(102u, 2u, 2u), 22222222, 0, 0, TrackerDetToDTCELinkCablingMap::PXB, 0);
+  pCablingMap_->insert(DTCELinkId(103u, 3u, 3u), 33333333, 0, 0, TrackerDetToDTCELinkCablingMap::PXB, 0);
+  pCablingMap_->insert(DTCELinkId(104u, 4u, 4u), 44444444, 0, 0, TrackerDetToDTCELinkCablingMap::PXB, 0);
 
   edm::Service<cond::service::PoolDBOutputService> poolDbService;
 

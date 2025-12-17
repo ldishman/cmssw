@@ -37,12 +37,76 @@ TrackerDetToDTCELinkCablingMap::detIdToDTCELinkId(uint32_t const key) const {
   return DTCELinkId_itpair;
 }
 
+unsigned int TrackerDetToDTCELinkCablingMap::detIdToLayerNum(uint32_t const key) const {
+  auto const it = cablingMapDetIdToLayerNum_.find(key);
+  
+  if (it == cablingMapDetIdToLayerNum_.end()) {
+    throw cms::Exception(
+        "TrackerDetToDTCELinkCablingMap has been asked to return a layerNum associated to a DetId, but the latter is "
+        "unknown to the map. ")
+        << " DetId = " << key << std::endl;
+  }
+
+  return it->second;
+}
+
+unsigned int TrackerDetToDTCELinkCablingMap::detIdToRingNum(uint32_t const key) const {
+  auto const it = cablingMapDetIdToRingNum_.find(key);
+  
+  if (it == cablingMapDetIdToRingNum_.end()) {
+    throw cms::Exception(
+        "TrackerDetToDTCELinkCablingMap has been asked to return a ringNum associated to a DetId, but the latter is "
+        "unknown to the map. ")
+        << " DetId = " << key << std::endl;
+  }
+
+  return it->second;
+}
+
+TrackerDetToDTCELinkCablingMap::Subdet TrackerDetToDTCELinkCablingMap::detIdToSubDet(uint32_t const key) const {
+  auto const it = cablingMapDetIdToSubDet_.find(key);
+
+  if (it == cablingMapDetIdToSubDet_.end()) {
+    throw cms::Exception(
+        "TrackerDetToDTCELinkCablingMap has been asked to return a subDet associated to a DetId, but the latter is "
+        "unknown to the map. ")
+        << " DetId = " << key << std::endl;
+  }
+
+  return it->second;
+}
+
+unsigned int TrackerDetToDTCELinkCablingMap::detIdToNElinks(uint32_t const key) const {
+  auto const it = cablingMapDetIdToNElinks_.find(key);
+
+  if (it == cablingMapDetIdToNElinks_.end()) {
+    throw cms::Exception(
+        "TrackerDetToDTCELinkCablingMap has been asked to return a NElinks associated to a DetId, but the latter is "
+        "unknown to the map. ")
+        << " DetId = " << key << std::endl;
+  }
+
+  return it->second;
+}
+
 bool TrackerDetToDTCELinkCablingMap::knowsDTCELinkId(DTCELinkId const& key) const {
   return cablingMapDTCELinkIdToDetId_.find(key) != cablingMapDTCELinkIdToDetId_.end();
 }
 
 bool TrackerDetToDTCELinkCablingMap::knowsDetId(uint32_t key) const {
   return cablingMapDetIdToDTCELinkId_.find(key) != cablingMapDetIdToDTCELinkId_.end();
+}
+
+bool TrackerDetToDTCELinkCablingMap::knowsLayerNum(unsigned int key) const {
+  return cablingMapDetIdToLayerNum_.find(key) != cablingMapDetIdToLayerNum_.end();
+}
+
+bool TrackerDetToDTCELinkCablingMap::knowsRingNum(unsigned int key) const {
+  return cablingMapDetIdToRingNum_.find(key) != cablingMapDetIdToRingNum_.end();
+}
+
+bool TrackerDetToDTCELinkCablingMap::knowsNElinks(unsigned int key) const {
+  return cablingMapDetIdToNElinks_.find(key) != cablingMapDetIdToNElinks_.end();
 }
 
 std::vector<DTCELinkId> TrackerDetToDTCELinkCablingMap::getKnownDTCELinkIds() const {
@@ -82,12 +146,61 @@ std::vector<uint32_t> TrackerDetToDTCELinkCablingMap::getKnownDetIds() const {
   return knownDetId;
 }
 
-void TrackerDetToDTCELinkCablingMap::insert(DTCELinkId const& dtcELinkId, uint32_t const detId) {
+std::vector<uint32_t> TrackerDetToDTCELinkCablingMap::getAllDetIdsForDTCId(unsigned int dtcId) const {
+  std::vector<uint32_t> result;
+  // Iterate over all (DTCELinkId -> DetId) pairs
+  for (auto const& entry : cablingMapDTCELinkIdToDetId_) {
+    if (entry.first.dtc_id() == dtcId) {
+      result.push_back(entry.second);
+    }
+  }
+
+  return result;
+}
+
+std::vector<unsigned int> TrackerDetToDTCELinkCablingMap::getKnownDTCIds() const {
+  std::set<unsigned int> uniqueDTCIds;
+
+  for (const auto& entry : cablingMapDTCELinkIdToDetId_) {
+    uniqueDTCIds.insert(entry.first.dtc_id());
+  }
+
+  std::vector<unsigned int> dtcIds(uniqueDTCIds.begin(), uniqueDTCIds.end());
+
+  return dtcIds;
+}
+
+std::vector<std::pair<unsigned int, unsigned int>> TrackerDetToDTCELinkCablingMap::getKnownDTCIdsWithIndex() const {
+  std::set<unsigned int> uniqueDTCIds;
+  for (const auto& entry : cablingMapDTCELinkIdToDetId_) {
+    uniqueDTCIds.insert(entry.first.dtc_id());
+  }
+
+  std::vector<std::pair<unsigned int, unsigned int>> dtcIdsWithIndex;
+  dtcIdsWithIndex.reserve(uniqueDTCIds.size());
+
+  unsigned int idx = 0;
+  for (auto dtcId : uniqueDTCIds) {
+    dtcIdsWithIndex.emplace_back(idx++, dtcId);
+  }
+
+  return dtcIdsWithIndex;
+}
+
+void TrackerDetToDTCELinkCablingMap::insert(DTCELinkId const& dtcELinkId, uint32_t const detId, unsigned int const layerNum, unsigned int const ringNum, Subdet subDet, unsigned int const nElinks) {
   cablingMapDTCELinkIdToDetId_.insert(std::make_pair(DTCELinkId(dtcELinkId), uint32_t(detId)));
   cablingMapDetIdToDTCELinkId_.insert(std::make_pair(uint32_t(detId), DTCELinkId(dtcELinkId)));
+  cablingMapDetIdToLayerNum_.insert(std::make_pair(detId, layerNum));		// No need to recast these anyway
+  cablingMapDetIdToRingNum_.insert(std::make_pair(detId, ringNum));
+  cablingMapDetIdToSubDet_.insert(std::make_pair(detId, subDet));
+  cablingMapDetIdToNElinks_.insert(std::make_pair(detId, nElinks));
 }
 
 void TrackerDetToDTCELinkCablingMap::clear() {
   cablingMapDTCELinkIdToDetId_.clear();
   cablingMapDetIdToDTCELinkId_.clear();
+  cablingMapDetIdToLayerNum_.clear();
+  cablingMapDetIdToRingNum_.clear();
+  cablingMapDetIdToSubDet_.clear();
+  cablingMapDetIdToNElinks_.clear();
 }

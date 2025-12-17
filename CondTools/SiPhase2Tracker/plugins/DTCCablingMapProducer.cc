@@ -91,6 +91,10 @@ private:
   unsigned csvFormat_idtcid_;
   unsigned csvFormat_igbtlinkid_;
   unsigned csvFormat_ielinkid_;
+  unsigned csvFormat_ilayer_;
+  unsigned csvFormat_iring_;
+  unsigned csvFormat_isubdet_;
+  unsigned csvFormat_inelinks_;
   cond::Time_t iovBeginTime_;
   std::unique_ptr<TrackerDetToDTCELinkCablingMap> pCablingMap_;
   std::string record_;
@@ -106,6 +110,10 @@ void DTCCablingMapProducer::fillDescriptions(edm::ConfigurationDescriptions& des
   desc.add<unsigned>("csvFormat_idtcid", 0);
   desc.add<unsigned>("csvFormat_igbtlinkid", 0);
   desc.add<unsigned>("csvFormat_ielinkid", 0);
+  desc.add<unsigned>("csvFormat_ilayer", 0);
+  desc.add<unsigned>("csvFormat_iring", 0);
+  desc.add<unsigned>("csvFormat_isubdet", 0);
+  desc.add<unsigned>("csvFormat_inelinks", 0);
   desc.add<long long unsigned int>("iovBeginTime", 1);
   desc.add<std::string>("record", "TrackerDTCCablingMapRcd");
   desc.add<std::vector<std::string>>("modulesToDTCCablingCSVFileNames", std::vector<std::string>());
@@ -119,6 +127,10 @@ DTCCablingMapProducer::DTCCablingMapProducer(const edm::ParameterSet& iConfig)
       csvFormat_idtcid_(iConfig.getParameter<unsigned>("csvFormat_idtcid")),
       csvFormat_igbtlinkid_(iConfig.getParameter<unsigned>("csvFormat_igbtlinkid")),
       csvFormat_ielinkid_(iConfig.getParameter<unsigned>("csvFormat_ielinkid")),
+      csvFormat_ilayer_(iConfig.getParameter<unsigned>("csvFormat_ilayer")),
+      csvFormat_iring_(iConfig.getParameter<unsigned>("csvFormat_iring")),
+      csvFormat_isubdet_(iConfig.getParameter<unsigned>("csvFormat_isubdet")),
+      csvFormat_inelinks_(iConfig.getParameter<unsigned>("csvFormat_inelinks")),
       iovBeginTime_(iConfig.getParameter<long long unsigned int>("iovBeginTime")),
       pCablingMap_(std::make_unique<TrackerDetToDTCELinkCablingMap>()),
       record_(iConfig.getParameter<std::string>("record")) {
@@ -212,6 +224,8 @@ void DTCCablingMapProducer::LoadModulesToDTCCablingMapFromCSV(
             case DUMMY_FILL_DISABLED:
               gbt_id = strtoul(csvColumn.at(csvFormat_igbtlinkid_).c_str(), nullptr, 10);
               elink_id = strtoul(csvColumn.at(csvFormat_ielinkid_).c_str(), nullptr, 10);
+              //elink_id = lineNumber;
+	      //std::cout << "lineNumber = " << lineNumber << "\n";
               break;
             case DUMMY_FILL_ELINK_ID:
               gbt_id = strtoul(csvColumn.at(csvFormat_igbtlinkid_).c_str(), nullptr, 10);
@@ -245,7 +259,23 @@ void DTCCablingMapProducer::LoadModulesToDTCCablingMapFromCSV(
                 << dtc_id << "," << gbt_id << "," << elink_id << ")";
           }
 
-          pCablingMap_->insert(dtcELinkId, detIdRaw);
+          unsigned const layerNum = strtoul(csvColumn.at(csvFormat_ilayer_).c_str(), nullptr, 10);
+          unsigned const ringNum = strtoul(csvColumn.at(csvFormat_iring_).c_str(), nullptr, 10);
+          unsigned const nElinks = strtoul(csvColumn.at(csvFormat_inelinks_).c_str(), nullptr, 10);
+
+          std::string const& subdetStr = csvColumn.at(csvFormat_isubdet_);
+          TrackerDetToDTCELinkCablingMap::Subdet subDet;
+          
+          if (subdetStr == "PXB") subDet = TrackerDetToDTCELinkCablingMap::PXB;
+          else if (subdetStr == "FPIX_1") subDet = TrackerDetToDTCELinkCablingMap::FPIX_1;
+          else if (subdetStr == "FPIX_2") subDet = TrackerDetToDTCELinkCablingMap::FPIX_2;
+          else {
+            edm::LogWarning("DTCCablingMapProducer") << "Unknown Subdet string: " << subdetStr;
+            subDet = TrackerDetToDTCELinkCablingMap::PXB; // fallback
+          }
+
+          pCablingMap_->insert(dtcELinkId, detIdRaw, layerNum, ringNum, subDet, nElinks);
+
         } else {
           if (verbosity_ >= 3) {
             edm::LogInfo("CSVParser") << "Reading CSV file: Skipped a short line: \"" << csvLine << "\"" << endl;

@@ -21,7 +21,7 @@ process.load('Configuration.StandardSequences.EndOfProcess_cff')
 
 # GlobalTag
 from Configuration.AlCa.GlobalTag import GlobalTag
-process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:phase2_realistic_T30', '')
+process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:phase2_realistic_T33', '')
 
 # Input files
 process.source = cms.Source("PoolSource",
@@ -52,7 +52,7 @@ process.configurationMetadata = cms.untracked.PSet(
 
 process.Phase2ITValidateDataRate = DQMEDAnalyzer("Phase2ITValidateDataRate",
     # Input collection
-    Phase2ITChipBitStream = cms.InputTag("Phase2ITQCoreProducer"),
+    Phase2ITChipBitStream = cms.InputTag("PixelToBitStreamProducer"),
     
     # DQM folder name
     TopFolderName = cms.string("TrackerPhase2ITDataRateV"),
